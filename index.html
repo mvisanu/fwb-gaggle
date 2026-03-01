@@ -1,0 +1,1913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>FWB Gaggle — Stableford Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --primary: #1a472a;
+  --primary-deep: #0d2818;
+  --gold: #d4af37;
+  --gold-dark: #b8960c;
+  --cream: #f5f0e1;
+  --white: #ffffff;
+  --green-good: #4ade80;
+  --green-good-on-light: #16a34a;
+  --red-bad: #e8443a;
+  --red-bad-on-light: #dc2626;
+  --gray: #9ca3af;
+  --gray-dark: #374151;
+  --gray-light: #6b7280;
+  --text-dark: #1e293b;
+  --text-muted: #64748b;
+  --border-light: #e2e8f0;
+  --row-hover: #f8fafc;
+  --row-stripe: #f1f5f9;
+  --overlay: rgba(0,0,0,0.5);
+  --radius: 12px;
+  --transition: 300ms ease;
+}
+
+html { font-size: 16px; }
+body {
+  font-family: 'Barlow', sans-serif;
+  background: var(--primary-deep);
+  color: var(--white);
+  min-height: 100dvh;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1, h2, h3, .heading {
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 1px;
+}
+
+/* --- Layout --- */
+.app-header {
+  background: var(--primary);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.app-header-inner {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.app-header h1 {
+  font-size: 1.5rem;
+  color: var(--gold);
+}
+.back-btn {
+  background: none;
+  border: none;
+  color: var(--cream);
+  font-size: 1.5rem;
+  cursor: pointer;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.back-btn:active { opacity: 0.6; }
+.header-spacer { width: 44px; }
+
+.screen {
+  display: none;
+  padding: 16px;
+  padding-bottom: 100px;
+  max-width: 700px;
+  margin: 0 auto;
+  animation: fadeIn var(--transition);
+}
+.screen.active { display: block; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Buttons --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: var(--radius);
+  font-family: 'Barlow', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.5; pointer-events: none; }
+.btn-primary { background: var(--gold); color: var(--primary-deep); }
+.btn-secondary { background: var(--primary); color: var(--cream); border: 1px solid rgba(255,255,255,0.15); }
+.btn-danger { background: var(--red-bad); color: white; }
+.btn-full { width: 100%; }
+
+/* --- Cards --- */
+.card {
+  background: var(--primary);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+/* --- Stats Banner --- */
+.stats-banner {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.stat-box {
+  background: var(--primary);
+  border-radius: var(--radius);
+  padding: 14px 8px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.stat-value {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.4rem;
+  color: var(--gold);
+}
+.stat-label {
+  font-size: 0.7rem;
+  color: var(--gray);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* --- Content Panel (white card below dark hero) --- */
+.content-panel {
+  background: var(--white);
+  border-radius: 20px 20px 0 0;
+  margin: 0 -16px;
+  padding: 4px 16px 16px;
+  min-height: 60vh;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+  color: var(--text-dark);
+}
+
+/* --- Leaderboard Table --- */
+.leaderboard { width: 100%; border-collapse: collapse; }
+.leaderboard th {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.85rem;
+  color: var(--white);
+  background: var(--primary);
+  text-align: left;
+  padding: 10px 6px;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.leaderboard th:first-child { border-radius: 8px 0 0 8px; }
+.leaderboard th:last-child { border-radius: 0 8px 8px 0; }
+.leaderboard th:active { opacity: 0.8; }
+.leaderboard th .sort-arrow { font-size: 0.65rem; margin-left: 2px; opacity: 0.4; }
+.leaderboard th.sorted .sort-arrow { opacity: 1; }
+.leaderboard td {
+  padding: 11px 6px;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 0.9rem;
+  white-space: nowrap;
+  color: var(--text-dark);
+}
+.leaderboard tbody tr:nth-child(even) { background: var(--row-stripe); }
+.leaderboard tbody tr:active { background: var(--row-hover); }
+.leaderboard tr.top-winner { background: rgba(212,175,55,0.12) !important; }
+.leaderboard .rank { color: var(--text-muted); font-weight: 600; width: 28px; }
+.leaderboard .player-name { font-weight: 700; color: var(--primary-deep); }
+.leaderboard .hdcp { font-weight: 700; color: var(--primary); }
+.change-down { color: var(--green-good-on-light); font-weight: 600; }
+.change-up { color: var(--red-bad-on-light); font-weight: 600; }
+.change-same { color: var(--gray); }
+
+/* --- Section Headers --- */
+.section-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.3rem;
+  color: var(--primary);
+  margin: 20px 0 12px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid var(--gold);
+}
+
+/* --- Form Guide Dots --- */
+.form-guide { display: flex; gap: 5px; align-items: center; }
+.form-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+.form-dot.down { background: var(--green-good-on-light); }
+.form-dot.up { background: var(--red-bad-on-light); }
+.form-dot.same { background: #cbd5e1; }
+
+/* --- Trend Rows --- */
+.trend-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.trend-name { font-weight: 600; font-size: 0.85rem; min-width: 70px; color: var(--primary-deep); }
+
+/* --- Win Leaderboard --- */
+.win-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.win-rank { color: var(--text-muted); font-weight: 700; width: 28px; font-size: 0.9rem; }
+.win-name { flex: 1; font-weight: 700; font-size: 0.9rem; color: var(--primary-deep); }
+.win-count { font-size: 1rem; margin-right: 8px; color: var(--gold-dark); }
+.win-pct { color: var(--text-muted); font-size: 0.8rem; width: 48px; text-align: right; }
+
+/* --- Nav Grid --- */
+.nav-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-light);
+}
+.nav-btn {
+  background: var(--primary);
+  border: none;
+  border-radius: var(--radius);
+  padding: 16px 12px;
+  color: var(--cream);
+  font-family: 'Barlow', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  min-height: 48px;
+  transition: transform 0.1s, box-shadow 0.15s;
+  box-shadow: 0 2px 8px rgba(26,71,42,0.2);
+}
+.nav-btn:active { transform: scale(0.97); box-shadow: 0 1px 4px rgba(26,71,42,0.15); }
+.nav-icon { font-size: 1.5rem; display: block; margin-bottom: 4px; }
+
+/* --- Enter Round --- */
+.date-input {
+  width: 100%;
+  padding: 12px;
+  border-radius: var(--radius);
+  border: 1px solid rgba(255,255,255,0.2);
+  background: var(--primary);
+  color: var(--white);
+  font-family: 'Barlow', sans-serif;
+  font-size: 1rem;
+  min-height: 48px;
+}
+.score-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  flex-wrap: wrap;
+}
+.score-player {
+  flex: 1;
+  min-width: 0;
+}
+.score-player-name { font-weight: 600; font-size: 0.95rem; }
+.score-player-hdcp { font-size: 0.75rem; color: var(--gray); }
+.score-input {
+  width: 64px;
+  padding: 10px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: var(--primary-deep);
+  color: var(--white);
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-align: center;
+  font-family: 'Barlow', sans-serif;
+  min-height: 48px;
+}
+.score-input:focus { border-color: var(--gold); outline: none; }
+.score-preview {
+  font-size: 0.75rem;
+  width: 100%;
+  padding-left: 0;
+  margin-top: 2px;
+  display: flex;
+  gap: 12px;
+}
+.preview-item { white-space: nowrap; }
+.score-extras {
+  width: 100%;
+  display: flex;
+  gap: 16px;
+  padding: 6px 0 2px;
+}
+.score-extra-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--gray);
+  white-space: nowrap;
+}
+.money-input {
+  width: 60px;
+  padding: 5px 6px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px;
+  color: var(--white);
+  font-size: 0.9rem;
+  font-family: 'Barlow', sans-serif;
+  text-align: center;
+}
+.money-input:focus { border-color: var(--gold); outline: none; }
+
+/* Enter Round on white content-panel */
+.content-panel .score-row { border-bottom-color: var(--border-light); }
+.content-panel .score-player-name { color: var(--text-dark); }
+.content-panel .score-player-hdcp { color: var(--text-muted); }
+.content-panel .date-input { background: var(--white); color: var(--text-dark); border-color: var(--border-light); }
+.content-panel .score-extra-label { color: var(--text-muted); }
+.content-panel .money-input { background: var(--row-stripe); border-color: var(--border-light); color: var(--text-dark); }
+
+/* --- Charts --- */
+.chart-section {
+  background: var(--row-stripe);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+.chart-empty {
+  text-align: center;
+  color: var(--gray);
+  padding: 16px;
+  font-size: 0.88rem;
+}
+
+/* Bar chart */
+.bar-chart { display: flex; flex-direction: column; gap: 7px; }
+.bar-row { display: flex; align-items: center; gap: 10px; }
+.bar-label {
+  width: 68px;
+  text-align: right;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bar-track {
+  flex: 1;
+  height: 18px;
+  background: #dde3ea;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #b8960c, #d4af37);
+  border-radius: 4px;
+  min-width: 6px;
+}
+.bar-value {
+  width: 22px;
+  font-size: 0.95rem;
+  font-family: 'Bebas Neue', sans-serif;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+/* Pie chart */
+.pie-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pie-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.82rem;
+  line-height: 1.3;
+}
+.pie-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* --- History --- */
+.round-card {
+  background: var(--primary);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+.round-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  cursor: pointer;
+  min-height: 48px;
+}
+.round-header:active { background: rgba(255,255,255,0.05); }
+.round-date { font-weight: 700; font-size: 0.95rem; }
+.round-meta { font-size: 0.8rem; color: var(--gray); }
+.round-winner { color: var(--gold); font-weight: 600; font-size: 0.85rem; }
+.round-expand { color: var(--gray); font-size: 1.2rem; transition: transform 0.2s; }
+.round-expand.open { transform: rotate(180deg); }
+.round-detail {
+  display: none;
+  padding: 0 16px 14px;
+}
+.round-detail.open { display: block; }
+.round-detail table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.round-detail th {
+  text-align: left;
+  padding: 6px 4px;
+  color: var(--gold);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.75rem;
+  border-bottom: 1px solid rgba(212,175,55,0.3);
+}
+.round-detail td {
+  padding: 6px 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.round-detail tr.winner-row { background: rgba(212,175,55,0.1); }
+.delete-round-btn {
+  background: none;
+  border: 1px solid var(--red-bad);
+  color: var(--red-bad);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-family: 'Barlow', sans-serif;
+  cursor: pointer;
+  margin-top: 10px;
+  min-height: 44px;
+}
+.delete-round-btn:active { background: var(--red-bad); color: white; }
+
+/* --- Manage Players --- */
+.player-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  gap: 10px;
+}
+.player-info { flex: 1; }
+.player-info-name { font-weight: 600; }
+.player-info-sub { font-size: 0.75rem; color: var(--gray); }
+.player-badge {
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.badge-active { background: rgba(74,222,128,0.2); color: var(--green-good); }
+.badge-inactive { background: rgba(156,163,175,0.2); color: var(--gray); }
+.player-actions { display: flex; gap: 6px; }
+.player-actions button {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.15);
+  color: var(--cream);
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.player-actions button:active { background: rgba(255,255,255,0.1); }
+
+/* --- Modal --- */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--overlay);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--primary-deep);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: var(--radius);
+  padding: 24px;
+  width: 100%;
+  max-width: 400px;
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: fadeIn 200ms ease;
+}
+.modal h3 {
+  color: var(--gold);
+  font-size: 1.3rem;
+  margin-bottom: 16px;
+}
+.modal label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--gray);
+  margin-bottom: 4px;
+  margin-top: 12px;
+}
+.modal input[type="text"],
+.modal input[type="number"] {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: var(--primary);
+  color: var(--white);
+  font-family: 'Barlow', sans-serif;
+  font-size: 1rem;
+  min-height: 48px;
+}
+.modal input:focus { border-color: var(--gold); outline: none; }
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+.modal-actions .btn { flex: 1; }
+
+/* --- Settings --- */
+.ref-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  margin-bottom: 16px;
+}
+.ref-table th {
+  background: var(--primary);
+  color: var(--gold);
+  padding: 6px 8px;
+  text-align: center;
+  font-family: 'Bebas Neue', sans-serif;
+}
+.ref-table td {
+  padding: 4px 8px;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.payout-calc {
+  background: var(--primary);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.payout-result {
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+.payout-result div { padding: 4px 0; }
+
+.data-section { display: flex; flex-direction: column; gap: 10px; }
+#importFile { display: none; }
+
+/* --- Toast --- */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--primary);
+  border: 1px solid var(--gold);
+  color: var(--cream);
+  padding: 14px 24px;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 0.9rem;
+  z-index: 300;
+  transition: transform 0.3s ease;
+  text-align: center;
+  max-width: 90%;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* --- Loading --- */
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: var(--gray);
+}
+
+/* --- Confirm Dialog --- */
+.confirm-text { font-size: 0.95rem; line-height: 1.5; margin-bottom: 8px; }
+.confirm-warn { color: var(--red-bad); font-size: 0.85rem; margin-bottom: 4px; }
+
+/* --- Tabs --- */
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 4px;
+  border-radius: var(--radius);
+  background: #eef2f7;
+}
+.tab-btn {
+  flex: 1;
+  padding: 10px 8px;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  border-radius: 8px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1rem;
+  cursor: pointer;
+  min-height: 44px;
+  transition: all 0.2s;
+}
+.tab-btn.active {
+  background: var(--primary);
+  color: var(--gold);
+  box-shadow: 0 2px 6px rgba(26,71,42,0.25);
+}
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+/* ============================================================
+   RESPONSIVE BREAKPOINTS
+   ============================================================ */
+
+/* --- Tablet 600px+ --- */
+@media (min-width: 600px) {
+  .app-header-inner { padding: 16px 24px; }
+
+  .screen { padding: 20px 24px 100px; }
+
+  /* Content panel: no longer needs negative margin bleed — sits in centered column */
+  .content-panel {
+    border-radius: 16px;
+    margin: 0;
+    padding: 20px 24px 24px;
+  }
+
+  .stats-banner { gap: 14px; margin-bottom: 20px; }
+  .stat-box { padding: 18px 12px; }
+  .stat-value { font-size: 1.8rem; }
+
+  .nav-grid { grid-template-columns: repeat(4, 1fr); }
+
+  .bar-label { width: 88px; font-size: 0.88rem; }
+
+  .section-title { font-size: 1.4rem; }
+
+  .leaderboard td { font-size: 0.95rem; padding: 12px 8px; }
+  .leaderboard th { font-size: 0.9rem; padding: 11px 8px; }
+
+  .score-row { padding: 12px 0; }
+}
+
+/* --- Desktop 1024px+ --- */
+@media (min-width: 1024px) {
+  html { font-size: 17px; }
+
+  .app-header-inner { padding: 18px 0; }
+
+  .screen { padding: 28px 0 100px; }
+
+  .content-panel { padding: 24px 32px 32px; border-radius: 20px; }
+
+  .stats-banner { gap: 16px; margin-bottom: 24px; }
+  .stat-box { padding: 22px 16px; }
+  .stat-value { font-size: 2rem; }
+  .stat-label { font-size: 0.75rem; }
+
+  .section-title { font-size: 1.5rem; margin: 24px 0 14px; }
+
+  .bar-label { width: 96px; font-size: 0.9rem; }
+  .bar-track { height: 20px; }
+
+  .trend-name { font-size: 0.9rem; min-width: 80px; }
+  .form-dot { width: 14px; height: 14px; }
+
+  .win-name { font-size: 0.95rem; }
+  .win-count { font-size: 1.05rem; }
+
+  .modal { max-width: 480px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============ HEADER ============ -->
+<header class="app-header">
+  <div class="app-header-inner">
+    <button class="back-btn" id="backBtn" style="visibility:hidden" aria-label="Back">&#8592;</button>
+    <h1 id="headerTitle">FWB Gaggle</h1>
+    <div class="header-spacer"></div>
+  </div>
+</header>
+
+<!-- ============ DASHBOARD ============ -->
+<div class="screen active" id="screenDashboard">
+  <div class="stats-banner" id="statsBanner">
+    <div class="stat-box"><div class="stat-value" id="statRounds">0</div><div class="stat-label">Rounds</div></div>
+    <div class="stat-box"><div class="stat-value" id="statLastDate">—</div><div class="stat-label">Last Round</div></div>
+    <div class="stat-box"><div class="stat-value" id="statLeader">—</div><div class="stat-label">Leader</div></div>
+  </div>
+
+  <div class="content-panel">
+    <h2 class="section-title">Leaderboard</h2>
+    <div id="tabLeaderboard" style="margin-bottom:20px">
+      <table class="leaderboard">
+        <thead><tr id="leaderboardHead"></tr></thead>
+        <tbody id="leaderboardBody"></tbody>
+      </table>
+    </div>
+
+    <h2 class="section-title">Wins</h2>
+    <div id="winsBarChart" class="chart-section"></div>
+
+    <h2 class="section-title">Winnings</h2>
+    <div id="winningsPieChart" class="chart-section"></div>
+
+    <h2 class="section-title">Win Leaderboard</h2>
+    <div id="tabWins" style="margin-bottom:20px">
+      <div id="winLeaderboard"></div>
+    </div>
+
+    <h2 class="section-title">Form Guide</h2>
+    <div id="tabForm" style="margin-bottom:20px">
+      <div id="formGuide"></div>
+    </div>
+
+    <div class="nav-grid">
+      <button class="nav-btn" onclick="showScreen('screenEnterRound')"><span class="nav-icon">&#9998;</span>Enter Round</button>
+      <button class="nav-btn" onclick="showScreen('screenHistory')"><span class="nav-icon">&#128203;</span>History</button>
+      <button class="nav-btn" onclick="showScreen('screenPlayers')"><span class="nav-icon">&#128101;</span>Players</button>
+      <button class="nav-btn" onclick="showScreen('screenSettings')"><span class="nav-icon">&#9881;</span>Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ENTER ROUND ============ -->
+<div class="screen" id="screenEnterRound">
+  <div class="content-panel">
+    <label for="roundDate" style="font-size:0.85rem;margin-bottom:6px;display:block;color:var(--text-muted)">Round Date</label>
+    <input type="date" id="roundDate" class="date-input" style="margin-bottom:16px">
+    <div id="scoreEntryList"></div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn btn-secondary btn-full" onclick="showScreen('screenDashboard')">Cancel</button>
+      <button class="btn btn-primary btn-full" id="saveRoundBtn" onclick="saveRound()">Save Round</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ROUND HISTORY ============ -->
+<div class="screen" id="screenHistory">
+  <div id="historyList"></div>
+</div>
+
+<!-- ============ MANAGE PLAYERS ============ -->
+<div class="screen" id="screenPlayers">
+  <button class="btn btn-primary btn-full" onclick="openAddPlayerModal()" style="margin-bottom:16px">+ Add Player</button>
+  <div id="playerList"></div>
+</div>
+
+<!-- ============ SETTINGS ============ -->
+<div class="screen" id="screenSettings">
+  <h2 class="section-title">Handicap Reference</h2>
+  <div style="overflow-x:auto">
+    <table class="ref-table" id="hdcpRefTable"></table>
+  </div>
+
+  <h2 class="section-title">Payout Calculator</h2>
+  <div class="payout-calc">
+    <label style="color:var(--gray);font-size:0.85rem">Number of Players ($10 buy-in)</label>
+    <input type="number" inputmode="numeric" id="payoutPlayers" class="score-input" style="width:80px;margin-top:6px" value="12" min="1" oninput="calcPayout()">
+    <div class="payout-result" id="payoutResult"></div>
+  </div>
+
+  <h2 class="section-title">Data Management</h2>
+  <div class="data-section">
+    <button class="btn btn-secondary btn-full" onclick="exportData()">Export Data (JSON)</button>
+    <button class="btn btn-secondary btn-full" onclick="document.getElementById('importFile').click()">Import Data (JSON)</button>
+    <input type="file" id="importFile" accept=".json" onchange="importData(event)">
+    <button class="btn btn-secondary btn-full" onclick="confirmClearRounds()" style="border-color:var(--red-bad);color:var(--red-bad)">Clear Round Data</button>
+    <button class="btn btn-secondary btn-full" onclick="confirmSampleData()" style="border-color:var(--gold);color:var(--gold)">Load Sample Data</button>
+    <button class="btn btn-danger btn-full" onclick="confirmReset()">Reset All Data</button>
+  </div>
+</div>
+
+<!-- ============ MODAL ============ -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<!-- ============ TOAST ============ -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ========================================
+// DATABASE LAYER
+// ========================================
+const DB_NAME = 'fwbGaggle';
+const DB_VERSION = 1;
+let db = null;
+let useLocalStorage = false;
+
+const DEFAULT_PLAYERS = [
+  { name: 'Visanu', startingHdcp: 24 }, { name: 'Biscuit', startingHdcp: 18 },
+  { name: 'Julius', startingHdcp: 22 }, { name: 'PK', startingHdcp: 15 },
+  { name: 'Todd', startingHdcp: 20 }, { name: 'Timmy', startingHdcp: 15 },
+  { name: 'Tony', startingHdcp: 14 }, { name: 'Rich', startingHdcp: 15 },
+  { name: 'Josh', startingHdcp: 14 }, { name: 'Jordan', startingHdcp: 18 },
+  { name: 'Chuck', startingHdcp: 24 }, { name: 'Steve', startingHdcp: 14 },
+  { name: 'Ben', startingHdcp: 14 }, { name: 'Ute', startingHdcp: 17 },
+  { name: 'Haj', startingHdcp: 22 }, { name: 'Mikie', startingHdcp: 22 }
+];
+
+function genId() {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
+function initDB() {
+  return new Promise((resolve) => {
+    if (!window.indexedDB) { useLocalStorage = true; resolve(); return; }
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onerror = () => { useLocalStorage = true; resolve(); };
+    req.onupgradeneeded = (e) => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('players')) d.createObjectStore('players', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('rounds')) d.createObjectStore('rounds', { keyPath: 'id' });
+    };
+    req.onsuccess = (e) => { db = e.target.result; resolve(); };
+  });
+}
+
+function idbGetAll(store) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+function idbPut(store, item) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).put(item);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+function idbDelete(store, id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+function idbClear(store) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).clear();
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// Unified data access
+async function getPlayers() {
+  if (useLocalStorage) return JSON.parse(localStorage.getItem('fwb_players') || '[]');
+  return idbGetAll('players');
+}
+async function getRounds() {
+  if (useLocalStorage) return JSON.parse(localStorage.getItem('fwb_rounds') || '[]');
+  return idbGetAll('rounds');
+}
+async function putPlayer(p) {
+  if (useLocalStorage) {
+    const all = await getPlayers();
+    const idx = all.findIndex(x => x.id === p.id);
+    if (idx >= 0) all[idx] = p; else all.push(p);
+    localStorage.setItem('fwb_players', JSON.stringify(all));
+    return;
+  }
+  return idbPut('players', p);
+}
+async function putRound(r) {
+  if (useLocalStorage) {
+    const all = await getRounds();
+    const idx = all.findIndex(x => x.id === r.id);
+    if (idx >= 0) all[idx] = r; else all.push(r);
+    localStorage.setItem('fwb_rounds', JSON.stringify(all));
+    return;
+  }
+  return idbPut('rounds', r);
+}
+async function deleteRound(id) {
+  if (useLocalStorage) {
+    const all = await getRounds();
+    localStorage.setItem('fwb_rounds', JSON.stringify(all.filter(x => x.id !== id)));
+    return;
+  }
+  return idbDelete('rounds', id);
+}
+async function deletePlayer(id) {
+  if (useLocalStorage) {
+    const all = await getPlayers();
+    localStorage.setItem('fwb_players', JSON.stringify(all.filter(x => x.id !== id)));
+    return;
+  }
+  return idbDelete('players', id);
+}
+async function clearAll() {
+  if (useLocalStorage) {
+    localStorage.removeItem('fwb_players');
+    localStorage.removeItem('fwb_rounds');
+    return;
+  }
+  await idbClear('players');
+  await idbClear('rounds');
+}
+
+async function seedDefaultPlayers() {
+  const players = await getPlayers();
+  if (players.length === 0) {
+    for (const p of DEFAULT_PLAYERS) {
+      await putPlayer({ id: genId(), name: p.name, startingHdcp: p.startingHdcp, currentHdcp: p.startingHdcp, active: true, wins: 0, skinsWinnings: 0, greenyWinnings: 0 });
+    }
+  }
+}
+
+// ========================================
+// HANDICAP CALCULATION
+// ========================================
+function calcHandicap(currentHdcp, actual) {
+  if (actual === currentHdcp) return currentHdcp;
+  if (actual > currentHdcp) {
+    return currentHdcp + Math.floor((actual - currentHdcp) / 2);
+  }
+  const reduction = Math.floor((currentHdcp - actual) / 2);
+  return currentHdcp - Math.min(reduction, 2);
+}
+
+// Full recalculation from scratch
+async function fullRecalculate() {
+  const players = await getPlayers();
+  const rounds = await getRounds();
+
+  // Reset players
+  for (const p of players) {
+    p.currentHdcp = p.startingHdcp;
+    p.wins = 0;
+    p.skinsWinnings = 0;
+    p.greenyWinnings = 0;
+  }
+
+  // Sort rounds chronologically
+  rounds.sort((a, b) => a.date.localeCompare(b.date) || (a.id > b.id ? 1 : -1));
+
+  for (const round of rounds) {
+    let bestNet = Infinity;
+    let winnerId = null;
+    let winnerHdcp = Infinity;
+
+    for (const score of round.scores) {
+      const player = players.find(p => p.id === score.playerId);
+      if (!player) continue;
+      score.hdcpBefore = player.currentHdcp;
+      score.hdcpAfter = calcHandicap(player.currentHdcp, score.actual);
+      score.netScore = score.actual - score.hdcpBefore;
+      player.currentHdcp = score.hdcpAfter;
+      player.skinsWinnings = (player.skinsWinnings || 0) + (score.skinsWon || 0);
+      player.greenyWinnings = (player.greenyWinnings || 0) + (score.greenyWon || 0);
+
+      if (score.netScore < bestNet || (score.netScore === bestNet && score.hdcpBefore < winnerHdcp)) {
+        bestNet = score.netScore;
+        winnerId = score.playerId;
+        winnerHdcp = score.hdcpBefore;
+      }
+    }
+
+    round.winnerId = winnerId;
+    const winnerPlayer = players.find(p => p.id === winnerId);
+    round.winnerName = winnerPlayer ? winnerPlayer.name : '';
+    if (winnerPlayer) winnerPlayer.wins++;
+
+    await putRound(round);
+  }
+
+  for (const p of players) await putPlayer(p);
+}
+
+// ========================================
+// NAVIGATION
+// ========================================
+let currentScreen = 'screenDashboard';
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  currentScreen = id;
+
+  const backBtn = document.getElementById('backBtn');
+  const title = document.getElementById('headerTitle');
+
+  if (id === 'screenDashboard') {
+    backBtn.style.visibility = 'hidden';
+    title.textContent = 'FWB Gaggle';
+  } else {
+    backBtn.style.visibility = 'visible';
+    const titles = {
+      screenEnterRound: 'Enter Round',
+      screenHistory: 'Round History',
+      screenPlayers: 'Manage Players',
+      screenSettings: 'Settings'
+    };
+    title.textContent = titles[id] || 'FWB Gaggle';
+  }
+
+  window.scrollTo(0, 0);
+
+  if (id === 'screenDashboard') renderDashboard();
+  if (id === 'screenEnterRound') renderScoreEntry();
+  if (id === 'screenHistory') renderHistory();
+  if (id === 'screenPlayers') renderPlayerList();
+  if (id === 'screenSettings') renderSettings();
+}
+
+document.getElementById('backBtn').addEventListener('click', () => showScreen('screenDashboard'));
+
+// ========================================
+// DASHBOARD
+// ========================================
+let _leaderboardData = [];
+let _sortCol = 'hdcp';
+let _sortDir = -1; // -1 = descending, 1 = ascending
+
+const SORT_COLUMNS = [
+  { key: 'rank', label: '#' },
+  { key: 'name', label: 'Player' },
+  { key: 'hdcp', label: 'Hdcp' },
+  { key: 'wins', label: 'Wins' },
+  { key: 'last', label: 'Last' },
+  { key: 'change', label: '+/-' }
+];
+
+function handleSort(col) {
+  if (_sortCol === col) {
+    _sortDir *= -1;
+  } else {
+    _sortCol = col;
+    // Default descending for numeric columns, ascending for name
+    _sortDir = col === 'name' ? 1 : -1;
+  }
+  renderLeaderboard();
+}
+
+function renderLeaderboard() {
+  // Render header
+  const head = document.getElementById('leaderboardHead');
+  head.innerHTML = SORT_COLUMNS.map(c => {
+    const isSorted = _sortCol === c.key;
+    const arrow = isSorted ? (_sortDir === 1 ? '&#9650;' : '&#9660;') : '&#9660;';
+    return `<th class="${isSorted ? 'sorted' : ''}" onclick="handleSort('${c.key}')">${c.label}<span class="sort-arrow">${arrow}</span></th>`;
+  }).join('');
+
+  // Sort data
+  const sorted = [..._leaderboardData].sort((a, b) => {
+    let av, bv;
+    if (_sortCol === 'name') {
+      return _sortDir * a.name.localeCompare(b.name);
+    }
+    if (_sortCol === 'rank' || _sortCol === 'hdcp') { av = a.hdcp; bv = b.hdcp; }
+    else if (_sortCol === 'wins') { av = a.wins; bv = b.wins; }
+    else if (_sortCol === 'last') { av = a.last ?? -999; bv = b.last ?? -999; }
+    else if (_sortCol === 'change') { av = a.change; bv = b.change; }
+    else { av = 0; bv = 0; }
+    return _sortDir * (av - bv);
+  });
+
+  const tbody = document.getElementById('leaderboardBody');
+  tbody.innerHTML = sorted.map((p, i) => {
+    return `<tr class="${p.isTopWinner ? 'top-winner' : ''}">
+      <td class="rank">${i + 1}</td>
+      <td class="player-name">${esc(p.name)}</td>
+      <td class="hdcp">${p.hdcp}</td>
+      <td>${p.wins > 0 ? '&#127942; ' + p.wins : '—'}</td>
+      <td>${p.last !== null ? p.last : '—'}</td>
+      <td class="${p.change < 0 ? 'change-down' : p.change > 0 ? 'change-up' : 'change-same'}">${p.change < 0 ? '&#9660;' + Math.abs(p.change) : p.change > 0 ? '&#9650;' + p.change : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function renderDashboard() {
+  const players = await getPlayers();
+  const rounds = await getRounds();
+  rounds.sort((a, b) => a.date.localeCompare(b.date) || (a.id > b.id ? 1 : -1));
+
+  const activePlayers = players.filter(p => p.active);
+
+  // Stats banner
+  document.getElementById('statRounds').textContent = rounds.length;
+  if (rounds.length > 0) {
+    const lastDate = rounds[rounds.length - 1].date;
+    const d = new Date(lastDate + 'T00:00:00');
+    document.getElementById('statLastDate').textContent = (d.getMonth() + 1) + '/' + d.getDate();
+  } else {
+    document.getElementById('statLastDate').textContent = '—';
+  }
+  const leader = activePlayers.reduce((best, p) => (!best || p.currentHdcp < best.currentHdcp) ? p : best, null);
+  document.getElementById('statLeader').textContent = leader ? leader.name : '—';
+
+  // Find player with most wins for highlighting
+  const maxWins = Math.max(0, ...activePlayers.map(p => p.wins));
+
+  // Leaderboard — build row data then sort/render
+  _leaderboardData = activePlayers.map(p => ({
+    id: p.id, name: p.name, hdcp: p.currentHdcp, wins: p.wins,
+    last: getLastRoundScore(p.id, rounds),
+    change: getLastChange(p.id, rounds),
+    isTopWinner: maxWins > 0 && p.wins === maxWins
+  }));
+  renderLeaderboard();
+
+  // Win leaderboard
+  const winSorted = [...activePlayers].filter(p => p.wins > 0).sort((a, b) => b.wins - a.wins);
+  const winDiv = document.getElementById('winLeaderboard');
+  if (winSorted.length === 0) {
+    winDiv.innerHTML = '<div style="text-align:center;color:var(--gray);padding:20px">No wins recorded yet</div>';
+  } else {
+    winDiv.innerHTML = winSorted.map((p, i) => {
+      const roundsPlayed = rounds.filter(r => r.scores.some(s => s.playerId === p.id)).length;
+      const pct = roundsPlayed > 0 ? Math.round((p.wins / roundsPlayed) * 100) : 0;
+      return `<div class="win-row">
+        <span class="win-rank">${i + 1}</span>
+        <span class="win-name">${esc(p.name)}</span>
+        <span class="win-count">&#127942; ${p.wins}</span>
+        <span class="win-pct">${pct}%</span>
+      </div>`;
+    }).join('');
+  }
+
+  // Charts
+  renderWinsBarChart(activePlayers);
+  renderWinningsPieChart(players);
+
+  // Form guide
+  renderFormGuide(players, rounds);
+}
+
+function renderWinsBarChart(players) {
+  const div = document.getElementById('winsBarChart');
+  const sorted = [...players].filter(p => p.wins > 0).sort((a, b) => b.wins - a.wins);
+  if (sorted.length === 0) {
+    div.innerHTML = '<div class="chart-empty">No wins recorded yet</div>';
+    return;
+  }
+  const maxWins = sorted[0].wins;
+  div.innerHTML = `<div class="bar-chart">${sorted.map(p => {
+    const pct = Math.round((p.wins / maxWins) * 100);
+    return `<div class="bar-row">
+      <span class="bar-label">${esc(p.name)}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+      <span class="bar-value">${p.wins}</span>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+const PIE_COLORS = ['#d4af37','#4ade80','#60a5fa','#f472b6','#fb923c','#a78bfa','#34d399','#f87171','#fbbf24','#38bdf8','#818cf8','#e879f9','#a3e635','#22d3ee','#fb7185','#c084fc'];
+
+function renderWinningsPieChart(players) {
+  const div = document.getElementById('winningsPieChart');
+  const data = players
+    .map(p => ({ name: p.name, skins: p.skinsWinnings || 0, greeny: p.greenyWinnings || 0, total: (p.skinsWinnings || 0) + (p.greenyWinnings || 0) }))
+    .filter(p => p.total > 0)
+    .sort((a, b) => b.total - a.total);
+  if (data.length === 0) {
+    div.innerHTML = '<div class="chart-empty">No winnings recorded yet — enter Skins $ or Greeny $ when saving rounds</div>';
+    return;
+  }
+  const grandTotal = data.reduce((s, p) => s + p.total, 0);
+  const cx = 80, cy = 80, r = 68;
+  let angle = -Math.PI / 2;
+  const slices = data.map((p, i) => {
+    const sweep = (p.total / grandTotal) * 2 * Math.PI;
+    const x1 = cx + r * Math.cos(angle), y1 = cy + r * Math.sin(angle);
+    angle += sweep;
+    const x2 = cx + r * Math.cos(angle), y2 = cy + r * Math.sin(angle);
+    return `<path d="M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${sweep > Math.PI ? 1 : 0} 1 ${x2.toFixed(2)},${y2.toFixed(2)} Z" fill="${PIE_COLORS[i % PIE_COLORS.length]}" stroke="#0d2818" stroke-width="1.5"/>`;
+  }).join('');
+  const legend = data.map((p, i) =>
+    `<div class="pie-legend-item"><div class="pie-dot" style="background:${PIE_COLORS[i % PIE_COLORS.length]}"></div>` +
+    `<span><strong>${esc(p.name)}</strong> $${p.total} <span style="color:var(--gray);font-size:0.75rem">(Skins $${p.skins} / Greeny $${p.greeny})</span></span></div>`
+  ).join('');
+  div.innerHTML = `<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">` +
+    `<svg viewBox="0 0 160 160" style="width:150px;height:150px;flex-shrink:0">${slices}</svg>` +
+    `<div style="flex:1;min-width:120px"><div style="color:var(--gold);font-weight:700;margin-bottom:10px;font-size:0.9rem">Total: $${grandTotal}</div><div class="pie-legend">${legend}</div></div></div>`;
+}
+
+function getLastRoundScore(playerId, rounds) {
+  for (let i = rounds.length - 1; i >= 0; i--) {
+    const s = rounds[i].scores.find(s => s.playerId === playerId);
+    if (s) return s.actual;
+  }
+  return null;
+}
+
+function getLastChange(playerId, rounds) {
+  for (let i = rounds.length - 1; i >= 0; i--) {
+    const s = rounds[i].scores.find(s => s.playerId === playerId);
+    if (s) return s.hdcpAfter - s.hdcpBefore;
+  }
+  return 0;
+}
+
+function renderFormGuide(players, rounds) {
+  const activePlayers = players.filter(p => p.active);
+  const div = document.getElementById('formGuide');
+
+  if (rounds.length === 0) {
+    div.innerHTML = '<div style="text-align:center;color:var(--gray);padding:20px">No rounds played yet</div>';
+    return;
+  }
+
+  const lastN = rounds.slice(-10);
+  div.innerHTML = activePlayers
+    .sort((a, b) => a.currentHdcp - b.currentHdcp)
+    .map(p => {
+      const dots = lastN.map(r => {
+        const s = r.scores.find(s => s.playerId === p.id);
+        if (!s) return '';
+        const diff = s.hdcpAfter - s.hdcpBefore;
+        const cls = diff < 0 ? 'down' : diff > 0 ? 'up' : 'same';
+        return `<span class="form-dot ${cls}" title="${r.date}: ${s.actual}pts (${diff >= 0 ? '+' : ''}${diff})"></span>`;
+      }).join('');
+      return `<div class="trend-row">
+        <span class="trend-name">${esc(p.name)}</span>
+        <div class="form-guide">${dots || '<span style="color:var(--gray);font-size:0.75rem">—</span>'}</div>
+        <span style="font-weight:700;width:32px;text-align:right;color:var(--primary)">${p.currentHdcp}</span>
+      </div>`;
+    }).join('');
+}
+
+// ========================================
+// ENTER ROUND
+// ========================================
+async function renderScoreEntry() {
+  const today = new Date();
+  const dateStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+  document.getElementById('roundDate').value = dateStr;
+
+  const players = await getPlayers();
+  const active = players.filter(p => p.active).sort((a, b) => a.name.localeCompare(b.name));
+
+  const list = document.getElementById('scoreEntryList');
+  list.innerHTML = active.map(p => `
+    <div class="score-row">
+      <div class="score-player">
+        <div class="score-player-name">${esc(p.name)}</div>
+        <div class="score-player-hdcp">Hdcp: ${p.currentHdcp}</div>
+      </div>
+      <input type="number" inputmode="numeric" class="score-input" data-player-id="${p.id}" data-hdcp="${p.currentHdcp}" placeholder="—" min="0" max="60" oninput="previewScore(this)">
+      <div class="score-preview" id="preview-${p.id}"></div>
+      <div class="score-extras">
+        <label class="score-extra-label"><span>Skins $</span><input type="number" inputmode="decimal" class="skins-input money-input" data-player-id="${p.id}" placeholder="0" min="0" step="0.5"></label>
+        <label class="score-extra-label"><span>Greeny $</span><input type="number" inputmode="decimal" class="greeny-input money-input" data-player-id="${p.id}" placeholder="0" min="0" step="0.5"></label>
+      </div>
+    </div>
+  `).join('');
+}
+
+function previewScore(input) {
+  const hdcp = parseInt(input.dataset.hdcp);
+  const playerId = input.dataset.playerId;
+  const previewEl = document.getElementById('preview-' + playerId);
+
+  if (!input.value) { previewEl.innerHTML = ''; return; }
+  const actual = parseInt(input.value);
+  if (isNaN(actual)) { previewEl.innerHTML = ''; return; }
+
+  const newHdcp = calcHandicap(hdcp, actual);
+  const net = actual - hdcp;
+  const diff = newHdcp - hdcp;
+  const color = diff < 0 ? 'var(--green-good)' : diff > 0 ? 'var(--red-bad)' : 'var(--gray)';
+  const arrow = diff < 0 ? '&#9660;' : diff > 0 ? '&#9650;' : '—';
+
+  previewEl.innerHTML = `
+    <span class="preview-item" style="color:${color}">New: ${newHdcp} ${arrow}</span>
+    <span class="preview-item" style="color:${net <= 0 ? 'var(--green-good)' : 'var(--red-bad)'}">Net: ${net >= 0 ? '+' : ''}${net}</span>
+  `;
+}
+
+let savingRound = false;
+async function saveRound() {
+  if (savingRound) return;
+  const date = document.getElementById('roundDate').value;
+  if (!date) { toast('Please select a date'); return; }
+
+  const inputs = document.querySelectorAll('#scoreEntryList .score-input');
+  const scores = [];
+  for (const input of inputs) {
+    if (!input.value) continue;
+    const actual = parseInt(input.value);
+    if (isNaN(actual) || actual < 0) continue;
+    const playerId = input.dataset.playerId;
+    const hdcpBefore = parseInt(input.dataset.hdcp);
+    const hdcpAfter = calcHandicap(hdcpBefore, actual);
+    const skinsEl = document.querySelector(`.skins-input[data-player-id="${playerId}"]`);
+    const greenyEl = document.querySelector(`.greeny-input[data-player-id="${playerId}"]`);
+    const skinsWon = skinsEl && skinsEl.value ? parseFloat(skinsEl.value) || 0 : 0;
+    const greenyWon = greenyEl && greenyEl.value ? parseFloat(greenyEl.value) || 0 : 0;
+    scores.push({ playerId, playerName: '', hdcpBefore, actual, hdcpAfter, netScore: actual - hdcpBefore, skinsWon, greenyWon });
+  }
+
+  if (scores.length === 0) { toast('Enter at least one score'); return; }
+
+  savingRound = true;
+  document.getElementById('saveRoundBtn').disabled = true;
+
+  try {
+    const players = await getPlayers();
+
+    // Fill in player names
+    for (const s of scores) {
+      const p = players.find(p => p.id === s.playerId);
+      if (p) s.playerName = p.name;
+    }
+
+    // Determine winner
+    let bestNet = Infinity, winnerId = null, winnerHdcp = Infinity;
+    for (const s of scores) {
+      if (s.netScore < bestNet || (s.netScore === bestNet && s.hdcpBefore < winnerHdcp)) {
+        bestNet = s.netScore;
+        winnerId = s.playerId;
+        winnerHdcp = s.hdcpBefore;
+      }
+    }
+
+    const winnerPlayer = players.find(p => p.id === winnerId);
+
+    const round = {
+      id: genId(),
+      date,
+      scores,
+      winnerId,
+      winnerName: winnerPlayer ? winnerPlayer.name : ''
+    };
+
+    await putRound(round);
+
+    // Update player handicaps and wins
+    for (const s of scores) {
+      const p = players.find(p => p.id === s.playerId);
+      if (p) {
+        p.currentHdcp = s.hdcpAfter;
+        if (p.id === winnerId) p.wins++;
+        p.skinsWinnings = (p.skinsWinnings || 0) + (s.skinsWon || 0);
+        p.greenyWinnings = (p.greenyWinnings || 0) + (s.greenyWon || 0);
+        await putPlayer(p);
+      }
+    }
+
+    toast('Round saved! Winner: ' + (winnerPlayer ? winnerPlayer.name : '?') + ' &#127942;');
+    showScreen('screenDashboard');
+  } finally {
+    savingRound = false;
+    document.getElementById('saveRoundBtn').disabled = false;
+  }
+}
+
+// ========================================
+// ROUND HISTORY
+// ========================================
+async function renderHistory() {
+  const rounds = await getRounds();
+  rounds.sort((a, b) => b.date.localeCompare(a.date) || (b.id > a.id ? -1 : 1));
+  const div = document.getElementById('historyList');
+
+  if (rounds.length === 0) {
+    div.innerHTML = '<div style="text-align:center;color:var(--gray);padding:40px">No rounds recorded yet</div>';
+    return;
+  }
+
+  div.innerHTML = rounds.map(r => {
+    const d = new Date(r.date + 'T00:00:00');
+    const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const hasSkins = r.scores.some(s => s.skinsWon > 0);
+    const hasGreeny = r.scores.some(s => s.greenyWon > 0);
+    const detailRows = r.scores
+      .sort((a, b) => a.netScore - b.netScore)
+      .map(s => {
+        const isWinner = s.playerId === r.winnerId;
+        const diff = s.hdcpAfter - s.hdcpBefore;
+        const changeStr = diff < 0 ? `<span class="change-down">&#9660;${Math.abs(diff)}</span>` : diff > 0 ? `<span class="change-up">&#9650;${diff}</span>` : '<span class="change-same">—</span>';
+        return `<tr class="${isWinner ? 'winner-row' : ''}">
+          <td>${isWinner ? '&#127942; ' : ''}${esc(s.playerName)}</td>
+          <td>${s.actual}</td>
+          <td>${s.netScore >= 0 ? '+' : ''}${s.netScore}</td>
+          <td>${s.hdcpBefore} &#8594; ${s.hdcpAfter}</td>
+          <td>${changeStr}</td>
+          ${hasSkins ? `<td style="color:var(--gold)">${s.skinsWon > 0 ? '$' + s.skinsWon : '—'}</td>` : ''}
+          ${hasGreeny ? `<td style="color:var(--green-good)">${s.greenyWon > 0 ? '$' + s.greenyWon : '—'}</td>` : ''}
+        </tr>`;
+      }).join('');
+
+    return `<div class="round-card">
+      <div class="round-header" onclick="toggleRound(this)">
+        <div>
+          <div class="round-date">${dateStr}</div>
+          <div class="round-meta">${r.scores.length} players</div>
+        </div>
+        <div style="text-align:right">
+          <div class="round-winner">&#127942; ${esc(r.winnerName)}</div>
+          <div class="round-expand">&#9660;</div>
+        </div>
+      </div>
+      <div class="round-detail">
+        <table>
+          <thead><tr><th>Player</th><th>Pts</th><th>Net</th><th>Hdcp</th><th>+/-</th>${hasSkins ? '<th style="color:var(--gold)">Skins</th>' : ''}${hasGreeny ? '<th style="color:var(--green-good)">Greeny</th>' : ''}</tr></thead>
+          <tbody>${detailRows}</tbody>
+        </table>
+        <button class="delete-round-btn" onclick="confirmDeleteRound('${r.id}')">Delete Round</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleRound(header) {
+  const detail = header.nextElementSibling;
+  const arrow = header.querySelector('.round-expand');
+  detail.classList.toggle('open');
+  arrow.classList.toggle('open');
+}
+
+function confirmDeleteRound(roundId) {
+  openModal(`
+    <h3>Delete Round</h3>
+    <p class="confirm-text">Are you sure you want to delete this round?</p>
+    <p class="confirm-warn">All subsequent handicaps and win counts will be recalculated.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="doDeleteRound('${roundId}')">Delete</button>
+    </div>
+  `);
+}
+
+async function doDeleteRound(roundId) {
+  closeModal();
+  await deleteRound(roundId);
+  await fullRecalculate();
+  toast('Round deleted & handicaps recalculated');
+  renderHistory();
+}
+
+// ========================================
+// MANAGE PLAYERS
+// ========================================
+async function renderPlayerList() {
+  const players = await getPlayers();
+  players.sort((a, b) => a.name.localeCompare(b.name));
+  const div = document.getElementById('playerList');
+
+  div.innerHTML = players.map(p => `
+    <div class="player-item">
+      <div class="player-info">
+        <div class="player-info-name">${esc(p.name)}</div>
+        <div class="player-info-sub">Hdcp: ${p.currentHdcp} | Wins: ${p.wins}${(p.skinsWinnings || p.greenyWinnings) ? ` | Skins: $${p.skinsWinnings || 0} Greeny: $${p.greenyWinnings || 0}` : ''}</div>
+      </div>
+      <span class="player-badge ${p.active ? 'badge-active' : 'badge-inactive'}">${p.active ? 'Active' : 'Inactive'}</span>
+      <div class="player-actions">
+        <button onclick="openEditPlayerModal('${p.id}')" title="Edit">&#9998;</button>
+        <button onclick="togglePlayerActive('${p.id}')" title="Toggle Active">${p.active ? '&#128683;' : '&#9989;'}</button>
+        <button onclick="confirmDeletePlayer('${p.id}')" title="Delete" style="color:var(--red-bad)">&#128465;</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openAddPlayerModal() {
+  openModal(`
+    <h3>Add Player</h3>
+    <label>Name</label>
+    <input type="text" id="modalPlayerName" placeholder="Player name">
+    <label>Starting Handicap</label>
+    <input type="number" inputmode="numeric" id="modalPlayerHdcp" placeholder="e.g. 18" min="0" max="54">
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="doAddPlayer()">Add</button>
+    </div>
+  `);
+  setTimeout(() => document.getElementById('modalPlayerName').focus(), 100);
+}
+
+async function doAddPlayer() {
+  const name = document.getElementById('modalPlayerName').value.trim();
+  const hdcp = parseInt(document.getElementById('modalPlayerHdcp').value);
+  if (!name) { toast('Enter a name'); return; }
+  if (isNaN(hdcp) || hdcp < 0) { toast('Enter a valid handicap'); return; }
+  await putPlayer({ id: genId(), name, startingHdcp: hdcp, currentHdcp: hdcp, active: true, wins: 0, skinsWinnings: 0, greenyWinnings: 0 });
+  closeModal();
+  toast(name + ' added');
+  renderPlayerList();
+}
+
+async function openEditPlayerModal(playerId) {
+  const players = await getPlayers();
+  const p = players.find(x => x.id === playerId);
+  if (!p) return;
+
+  openModal(`
+    <h3>Edit Player</h3>
+    <label>Name</label>
+    <input type="text" id="modalPlayerName" value="${esc(p.name)}">
+    <label>Current Handicap</label>
+    <input type="number" inputmode="numeric" id="modalPlayerHdcp" value="${p.currentHdcp}" min="0" max="54">
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="doEditPlayer('${playerId}')">Save</button>
+    </div>
+  `);
+}
+
+async function doEditPlayer(playerId) {
+  const name = document.getElementById('modalPlayerName').value.trim();
+  const hdcp = parseInt(document.getElementById('modalPlayerHdcp').value);
+  if (!name) { toast('Enter a name'); return; }
+  if (isNaN(hdcp) || hdcp < 0) { toast('Enter a valid handicap'); return; }
+
+  const players = await getPlayers();
+  const p = players.find(x => x.id === playerId);
+  if (!p) return;
+  p.name = name;
+  p.currentHdcp = hdcp;
+  await putPlayer(p);
+  closeModal();
+  toast('Player updated');
+  renderPlayerList();
+}
+
+async function togglePlayerActive(playerId) {
+  const players = await getPlayers();
+  const p = players.find(x => x.id === playerId);
+  if (!p) return;
+  p.active = !p.active;
+  await putPlayer(p);
+  renderPlayerList();
+}
+
+function confirmDeletePlayer(playerId) {
+  openModal(`
+    <h3>Delete Player</h3>
+    <p class="confirm-text">Are you sure? This player will be removed from the roster.</p>
+    <p class="confirm-warn">Their scores in past rounds will be preserved as "[deleted]".</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="doDeletePlayer('${playerId}')">Delete</button>
+    </div>
+  `);
+}
+
+async function doDeletePlayer(playerId) {
+  // Mark name as [deleted] in past rounds
+  const rounds = await getRounds();
+  for (const r of rounds) {
+    for (const s of r.scores) {
+      if (s.playerId === playerId) {
+        s.playerName = '[deleted]';
+      }
+    }
+    if (r.winnerId === playerId) r.winnerName = '[deleted]';
+    await putRound(r);
+  }
+  await deletePlayer(playerId);
+  closeModal();
+  toast('Player deleted');
+  renderPlayerList();
+}
+
+// ========================================
+// SETTINGS
+// ========================================
+function renderSettings() {
+  // Handicap reference table
+  const table = document.getElementById('hdcpRefTable');
+  let rows = '<thead><tr><th>Hdcp</th><th>Expected Pts</th></tr></thead><tbody>';
+  for (let h = 0; h <= 36; h++) {
+    rows += `<tr><td>${h}</td><td>${36 - h}</td></tr>`;
+  }
+  rows += '</tbody>';
+  table.innerHTML = rows;
+
+  calcPayout();
+}
+
+function calcPayout() {
+  const n = parseInt(document.getElementById('payoutPlayers').value) || 0;
+  const pot = n * 10;
+  const first = Math.round(pot * 0.5);
+  const second = Math.round(pot * 0.3);
+  const third = pot - first - second;
+  document.getElementById('payoutResult').innerHTML = `
+    <div><strong>Pot:</strong> $${pot}</div>
+    <div style="color:var(--gold)">&#129351; 1st: $${first}</div>
+    <div style="color:var(--gray)">&#129352; 2nd: $${second}</div>
+    <div style="color:#cd7f32">&#129353; 3rd: $${third}</div>
+  `;
+}
+
+async function exportData() {
+  const players = await getPlayers();
+  const rounds = await getRounds();
+  const data = { players, rounds };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date();
+  a.href = url;
+  a.download = `fwb-gaggle-backup-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Data exported');
+}
+
+async function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = '';
+
+  const text = await file.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    toast('Invalid JSON file');
+    return;
+  }
+
+  if (!data.players || !data.rounds || !Array.isArray(data.players) || !Array.isArray(data.rounds)) {
+    toast('Invalid data structure');
+    return;
+  }
+
+  openModal(`
+    <h3>Import Data</h3>
+    <p class="confirm-text">This will replace all current data with:</p>
+    <div style="margin:10px 0;font-size:0.9rem">
+      <div><strong>${data.players.length}</strong> players</div>
+      <div><strong>${data.rounds.length}</strong> rounds</div>
+    </div>
+    <p class="confirm-warn">This action cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="doImport()">Import</button>
+    </div>
+  `);
+
+  window._pendingImport = data;
+}
+
+async function doImport() {
+  const data = window._pendingImport;
+  if (!data) return;
+  closeModal();
+  await clearAll();
+  for (const p of data.players) await putPlayer(p);
+  for (const r of data.rounds) await putRound(r);
+  // Recalculate to ensure consistency
+  await fullRecalculate();
+  toast('Data imported successfully');
+  showScreen('screenDashboard');
+  window._pendingImport = null;
+}
+
+function confirmClearRounds() {
+  openModal(`
+    <h3>Clear Round Data</h3>
+    <p class="confirm-text">This will delete all rounds and reset every player's handicap, wins, skins, and greeny back to their starting values.</p>
+    <p class="confirm-warn">Charts will be empty until new rounds are entered (or sample data loaded).</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="doClearRounds()">Clear Rounds</button>
+    </div>
+  `);
+}
+
+async function doClearRounds() {
+  closeModal();
+  const [players, rounds] = await Promise.all([getPlayers(), getRounds()]);
+  for (const r of rounds) await deleteRound(r.id);
+  for (const p of players) {
+    p.currentHdcp = p.startingHdcp;
+    p.wins = 0;
+    p.skinsWinnings = 0;
+    p.greenyWinnings = 0;
+    await putPlayer(p);
+  }
+  toast('Round data cleared');
+  showScreen('screenDashboard');
+}
+
+function confirmSampleData() {
+  openModal(`
+    <h3>Load Sample Data</h3>
+    <p class="confirm-text">This will add 6 sample rounds (with skins & greeny winnings) so you can see the charts. Existing rounds will be cleared.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="doSeedSampleData()">Load It</button>
+    </div>
+  `);
+}
+
+async function doSeedSampleData() {
+  closeModal(); // no-op if no modal open
+  const players = await getPlayers();
+  const find = name => players.find(p => p.name === name);
+  const sc = (name, actual, skinsWon = 0, greenyWon = 0) => {
+    const p = find(name);
+    if (!p) return null;
+    return { playerId: p.id, playerName: p.name, hdcpBefore: 0, actual, hdcpAfter: 0, netScore: 0, skinsWon, greenyWon };
+  };
+
+  const rawRounds = [
+    { date: '2026-01-04', scores: [
+      sc('Visanu', 26, 20, 0), sc('Biscuit', 21, 0, 0), sc('Julius', 19, 0, 5),
+      sc('PK', 17, 0, 0), sc('Todd', 22, 10, 0), sc('Timmy', 18, 0, 0),
+      sc('Tony', 16, 0, 0), sc('Rich', 16, 0, 5)
+    ]},
+    { date: '2026-01-11', scores: [
+      sc('Visanu', 24, 0, 0), sc('Julius', 26, 15, 0), sc('PK', 18, 0, 0),
+      sc('Todd', 17, 0, 0), sc('Timmy', 20, 0, 5), sc('Tony', 15, 0, 0),
+      sc('Rich', 17, 0, 0), sc('Jordan', 22, 15, 0), sc('Chuck', 28, 0, 0), sc('Steve', 15, 0, 0)
+    ]},
+    { date: '2026-01-18', scores: [
+      sc('Visanu', 31, 20, 0), sc('Biscuit', 19, 0, 5), sc('Julius', 22, 0, 0),
+      sc('PK', 16, 0, 0), sc('Todd', 24, 10, 0), sc('Timmy', 16, 0, 0),
+      sc('Tony', 18, 0, 0), sc('Rich', 14, 0, 0), sc('Josh', 16, 0, 0)
+    ]},
+    { date: '2026-01-25', scores: [
+      sc('Visanu', 27, 0, 0), sc('Biscuit', 23, 15, 0), sc('Julius', 20, 0, 0),
+      sc('PK', 14, 0, 0), sc('Todd', 22, 0, 0), sc('Timmy', 17, 0, 0),
+      sc('Tony', 16, 0, 5), sc('Rich', 18, 0, 0), sc('Josh', 17, 0, 0),
+      sc('Jordan', 20, 15, 0), sc('Haj', 25, 0, 0)
+    ]},
+    { date: '2026-02-01', scores: [
+      sc('Visanu', 28, 20, 0), sc('Julius', 24, 0, 0), sc('PK', 19, 0, 5),
+      sc('Todd', 19, 0, 0), sc('Timmy', 15, 0, 0), sc('Tony', 17, 0, 0),
+      sc('Rich', 16, 0, 0), sc('Mikie', 26, 10, 0)
+    ]},
+    { date: '2026-02-08', scores: [
+      sc('Visanu', 22, 0, 0), sc('Biscuit', 20, 0, 5), sc('Julius', 27, 20, 0),
+      sc('PK', 18, 0, 0), sc('Todd', 25, 0, 0), sc('Timmy', 16, 0, 0),
+      sc('Tony', 15, 10, 0), sc('Rich', 17, 0, 0), sc('Josh', 15, 0, 0),
+      sc('Jordan', 21, 0, 5)
+    ]}
+  ];
+
+  const existing = await getRounds();
+  for (const r of existing) await deleteRound(r.id);
+
+  for (const rr of rawRounds) {
+    const scores = rr.scores.filter(Boolean);
+    await putRound({ id: genId(), date: rr.date, scores, winnerId: null, winnerName: '' });
+  }
+
+  await fullRecalculate();
+  toast('Sample data loaded! &#127942;');
+  showScreen('screenDashboard');
+}
+
+function confirmReset() {
+  openModal(`
+    <h3>Reset All Data</h3>
+    <p class="confirm-text">This will delete all rounds and reset all players to defaults.</p>
+    <p class="confirm-warn">This action cannot be undone!</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmReset2()">Yes, Reset</button>
+    </div>
+  `);
+}
+
+function confirmReset2() {
+  closeModal();
+  setTimeout(() => {
+    openModal(`
+      <h3>Are You Sure?</h3>
+      <p class="confirm-text">ALL data will be permanently erased. Default players will be restored with 0 wins.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-danger" onclick="doReset()">Delete Everything</button>
+      </div>
+    `);
+  }, 200);
+}
+
+async function doReset() {
+  closeModal();
+  await clearAll();
+  await seedDefaultPlayers();
+  toast('All data reset');
+  showScreen('screenDashboard');
+}
+
+// ========================================
+// MODAL & TOAST HELPERS
+// ========================================
+function openModal(html) {
+  document.getElementById('modalContent').innerHTML = html;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+document.getElementById('modalOverlay').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.innerHTML = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function esc(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ========================================
+// INIT
+// ========================================
+async function init() {
+  await initDB();
+  await seedDefaultPlayers();
+  const rounds = await getRounds();
+  if (rounds.length === 0) {
+    await doSeedSampleData();
+  } else {
+    renderDashboard();
+  }
+}
+
+init();
+</script>
+</body>
+</html>
