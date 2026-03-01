@@ -1899,7 +1899,9 @@ function esc(str) {
 async function init() {
   await initDB();
   await seedDefaultPlayers();
-  renderDashboard();
+  const rounds = await getRounds();
+  if (rounds.length === 0) await doSeedSampleData();
+  else renderDashboard();
 }
 
 init();
