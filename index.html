@@ -603,6 +603,8 @@ h1, h2, h3, .heading {
   min-height: 48px;
 }
 .modal input:focus { border-color: var(--gold); outline: none; }
+.modal.modal-light { background: var(--row-stripe); border-color: var(--border-light); color: var(--text-dark); }
+.modal.modal-light h3 { color: var(--primary); }
 .modal-actions {
   display: flex;
   gap: 10px;
@@ -1230,13 +1232,15 @@ async function seedDefaultPlayers() {
 // ========================================
 // HANDICAP CALCULATION
 // ========================================
+const MIN_HDCP = 14;
+
 function calcHandicap(currentHdcp, actual) {
-  if (actual === currentHdcp) return currentHdcp;
+  if (actual === currentHdcp) return Math.max(MIN_HDCP, currentHdcp);
   if (actual > currentHdcp) {
-    return currentHdcp + Math.floor((actual - currentHdcp) / 2);
+    return Math.max(MIN_HDCP, currentHdcp + Math.floor((actual - currentHdcp) / 2));
   }
   const reduction = Math.floor((currentHdcp - actual) / 2);
-  return currentHdcp - Math.min(reduction, 2);
+  return Math.max(MIN_HDCP, currentHdcp - Math.min(reduction, 2));
 }
 
 // Full recalculation from scratch
@@ -1327,7 +1331,7 @@ async function openChampionSelector() {
     ${btns}
     <div class="modal-actions" style="margin-top:4px">
       <button class="btn btn-secondary btn-full" onclick="closeModal()">Cancel</button>
-    </div>`);
+    </div>`, true);
 }
 function selectChampion(name) {
   setBeltHolder(name);
@@ -2161,8 +2165,10 @@ async function doReset() {
 // ========================================
 // MODAL & TOAST HELPERS
 // ========================================
-function openModal(html) {
-  document.getElementById('modalContent').innerHTML = html;
+function openModal(html, light = false) {
+  const el = document.getElementById('modalContent');
+  el.innerHTML = html;
+  el.classList.toggle('modal-light', light);
   document.getElementById('modalOverlay').classList.add('open');
 }
 function closeModal() {
