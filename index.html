@@ -951,9 +951,9 @@ h1, h2, h3, .heading {
     </div>
 
     <div class="nav-grid">
-      <button class="nav-btn" onclick="showScreen('screenEnterRound')"><span class="nav-icon">&#9998;</span>Enter Round</button>
+      <button class="nav-btn" onclick="requirePin(()=>showScreen('screenEnterRound'))"><span class="nav-icon">&#9998;</span>Enter Round</button>
       <button class="nav-btn" onclick="showScreen('screenHistory')"><span class="nav-icon">&#128203;</span>History</button>
-      <button class="nav-btn" onclick="showScreen('screenPlayers')"><span class="nav-icon">&#128101;</span>Players</button>
+      <button class="nav-btn" onclick="requirePin(()=>showScreen('screenPlayers'))"><span class="nav-icon">&#128101;</span>Players</button>
       <button class="nav-btn" onclick="showScreen('screenSettings')"><span class="nav-icon">&#9881;</span>Settings</button>
       <button class="nav-btn" onclick="showScreen('screenHelp')" style="grid-column:span 2"><span class="nav-icon">&#10067;</span>Help &amp; FAQ</button>
     </div>
@@ -1092,14 +1092,17 @@ h1, h2, h3, .heading {
     <div id="greenyResults"></div>
   </div>
 
+  <h2 class="section-title">Security</h2>
+  <div class="payout-calc" id="pinSection"></div>
+
   <h2 class="section-title">Data Management</h2>
   <div class="data-section">
     <button class="btn btn-secondary btn-full" onclick="exportData()">Export Data (JSON)</button>
-    <button class="btn btn-secondary btn-full" onclick="document.getElementById('importFile').click()">Import Data (JSON)</button>
+    <button class="btn btn-secondary btn-full" onclick="requirePin(()=>document.getElementById('importFile').click())">Import Data (JSON)</button>
     <input type="file" id="importFile" accept=".json" onchange="importData(event)">
-    <button class="btn btn-secondary btn-full" onclick="confirmClearRounds()" style="border-color:var(--red-bad);color:var(--red-bad)">Clear Round Data</button>
-    <button class="btn btn-secondary btn-full" onclick="confirmSampleData()" style="border-color:var(--gold);color:var(--gold)">Load Sample Data</button>
-    <button class="btn btn-danger btn-full" onclick="confirmReset()">Reset All Data</button>
+    <button class="btn btn-secondary btn-full" onclick="requirePin(()=>confirmClearRounds())" style="border-color:var(--red-bad);color:var(--red-bad)">Clear Round Data</button>
+    <button class="btn btn-secondary btn-full" onclick="requirePin(()=>confirmSampleData())" style="border-color:var(--gold);color:var(--gold)">Load Sample Data</button>
+    <button class="btn btn-danger btn-full" onclick="requirePin(()=>confirmReset())">Reset All Data</button>
   </div>
 </div>
 
@@ -1896,6 +1899,9 @@ function toggleRound(header) {
 }
 
 function confirmDeleteRound(roundId) {
+  requirePin(() => _confirmDeleteRound(roundId));
+}
+function _confirmDeleteRound(roundId) {
   openModal(`
     <h3>Delete Round</h3>
     <p class="confirm-text">Are you sure you want to delete this round?</p>
@@ -2055,6 +2061,7 @@ function renderSettings() {
   calcPayout();
   renderSkinsPlayers();
   renderGreenyPlayers();
+  renderPinSection();
 }
 
 function calcPayout() {
@@ -2497,6 +2504,153 @@ async function doReset() {
   await seedDefaultPlayers();
   toast('All data reset');
   showScreen('screenDashboard');
+}
+
+// ========================================
+// ========================================
+// PIN LOCK
+// ========================================
+let sessionUnlocked = false;
+let _pinEntered = '';
+let _pinOnComplete = null;
+let _pinFirstEntry = '';
+
+function getPinHash()    { return localStorage.getItem('appPin') || ''; }
+function setPinHash(pin) { localStorage.setItem('appPin', pin); }
+function removePin()     { localStorage.removeItem('appPin'); sessionUnlocked = false; closeModal(); toast('PIN removed'); renderPinSection(); }
+function isPinSet()      { return !!getPinHash(); }
+
+function requirePin(callback) {
+  if (!isPinSet() || sessionUnlocked) { callback(); return; }
+  _showPinPad('Enter PIN', (pin) => {
+    if (pin === getPinHash()) {
+      sessionUnlocked = true;
+      closeModal();
+      callback();
+    } else {
+      _pinEntered = '';
+      _updatePinDots();
+      const err = document.getElementById('pinError');
+      if (err) { err.textContent = 'Incorrect PIN'; setTimeout(() => { err.textContent = ''; }, 1500); }
+    }
+  });
+}
+
+function _showPinPad(title, onComplete) {
+  _pinEntered = '';
+  _pinOnComplete = onComplete;
+  const html = `
+    <h3 id="pinTitle" style="text-align:center;margin-bottom:16px">${title}</h3>
+    <div id="pinDots" style="text-align:center;margin-bottom:8px;font-size:1.6rem;letter-spacing:14px">○○○○</div>
+    <div id="pinError" style="color:var(--red-bad);text-align:center;min-height:18px;margin-bottom:10px;font-size:0.88rem"></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:216px;margin:0 auto">
+      ${[1,2,3,4,5,6,7,8,9].map(d => `<button class="btn btn-secondary" style="padding:14px 0;font-size:1.2rem;font-weight:700" onclick="pinKey(${d})">${d}</button>`).join('')}
+      <div></div>
+      <button class="btn btn-secondary" style="padding:14px 0;font-size:1.2rem;font-weight:700" onclick="pinKey(0)">0</button>
+      <button class="btn btn-secondary" style="padding:14px 0;font-size:1.1rem" onclick="pinKey('del')">⌫</button>
+    </div>
+    <button class="btn btn-secondary btn-full" style="margin-top:12px" onclick="closeModal()">Cancel</button>
+  `;
+  openModal(html, true);
+}
+
+function _updatePinDots() {
+  const el = document.getElementById('pinDots');
+  if (el) el.textContent = '●'.repeat(_pinEntered.length) + '○'.repeat(4 - _pinEntered.length);
+}
+
+function pinKey(key) {
+  if (key === 'del') { _pinEntered = _pinEntered.slice(0, -1); _updatePinDots(); return; }
+  if (_pinEntered.length >= 4) return;
+  _pinEntered += key;
+  _updatePinDots();
+  if (_pinEntered.length === 4) {
+    const entered = _pinEntered;
+    setTimeout(() => { if (_pinOnComplete) _pinOnComplete(entered); }, 150);
+  }
+}
+
+function setupPin() {
+  _showPinPad('Set New PIN', (pin) => {
+    _pinFirstEntry = pin;
+    _pinEntered = '';
+    _updatePinDots();
+    const t = document.getElementById('pinTitle');
+    if (t) t.textContent = 'Confirm New PIN';
+    _pinOnComplete = (pin2) => {
+      if (pin2 === _pinFirstEntry) {
+        setPinHash(pin2);
+        sessionUnlocked = true;
+        closeModal();
+        toast('PIN set 🔒');
+        renderPinSection();
+      } else {
+        _pinEntered = '';
+        _updatePinDots();
+        const err = document.getElementById('pinError');
+        if (err) err.textContent = "PINs don't match — try again";
+        const t2 = document.getElementById('pinTitle');
+        if (t2) t2.textContent = 'Confirm New PIN';
+        _pinOnComplete = (pin3) => {
+          if (pin3 === _pinFirstEntry) { setPinHash(pin3); sessionUnlocked = true; closeModal(); toast('PIN set 🔒'); renderPinSection(); }
+          else { _pinEntered = ''; _updatePinDots(); const e = document.getElementById('pinError'); if (e) e.textContent = "PINs don't match"; }
+        };
+      }
+    };
+  });
+}
+
+function changePin() {
+  _showPinPad('Enter Current PIN', (pin) => {
+    if (pin !== getPinHash()) {
+      _pinEntered = ''; _updatePinDots();
+      const err = document.getElementById('pinError'); if (err) err.textContent = 'Incorrect PIN';
+      return;
+    }
+    _pinEntered = '';
+    const t = document.getElementById('pinTitle'); if (t) t.textContent = 'Set New PIN';
+    _updatePinDots();
+    _pinOnComplete = (newPin) => {
+      _pinFirstEntry = newPin; _pinEntered = '';
+      const t2 = document.getElementById('pinTitle'); if (t2) t2.textContent = 'Confirm New PIN';
+      _updatePinDots();
+      _pinOnComplete = (confirmPin) => {
+        if (confirmPin === _pinFirstEntry) { setPinHash(confirmPin); closeModal(); toast('PIN updated 🔒'); renderPinSection(); }
+        else { _pinEntered = ''; _updatePinDots(); const e = document.getElementById('pinError'); if (e) e.textContent = "PINs don't match"; }
+      };
+    };
+  });
+}
+
+function confirmRemovePin() {
+  _showPinPad('Enter PIN to Remove', (pin) => {
+    if (pin !== getPinHash()) {
+      _pinEntered = ''; _updatePinDots();
+      const err = document.getElementById('pinError'); if (err) err.textContent = 'Incorrect PIN';
+      return;
+    }
+    removePin();
+  });
+}
+
+function renderPinSection() {
+  const el = document.getElementById('pinSection');
+  if (!el) return;
+  if (isPinSet()) {
+    const status = sessionUnlocked
+      ? '<span style="color:#4ade80;font-weight:600">Unlocked this session</span>'
+      : '<span style="color:var(--red-bad);font-weight:600">Locked</span>';
+    el.innerHTML = `
+      <div style="font-size:0.9rem;color:var(--text-muted);margin-bottom:12px">PIN is set — ${status}</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-secondary" onclick="changePin()">Change PIN</button>
+        <button class="btn btn-secondary" style="border-color:var(--red-bad);color:var(--red-bad)" onclick="confirmRemovePin()">Remove PIN</button>
+      </div>`;
+  } else {
+    el.innerHTML = `
+      <div style="font-size:0.9rem;color:var(--text-muted);margin-bottom:12px">No PIN set. Add a PIN to protect data entry.</div>
+      <button class="btn btn-secondary" onclick="setupPin()">Set Up PIN</button>`;
+  }
 }
 
 // ========================================
