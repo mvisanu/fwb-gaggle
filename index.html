@@ -76,15 +76,15 @@ h1, h2, h3, .heading {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  margin-top: 2px;
-  font-size: 0.7rem;
+  gap: 7px;
+  margin-top: 3px;
+  font-size: 0.85rem;
   font-family: 'Bebas Neue', sans-serif;
-  letter-spacing: 1px;
-  color: var(--cream);
-  opacity: 0.9;
+  letter-spacing: 2px;
+  color: var(--gold);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.4);
 }
-.belt-bar svg { flex-shrink: 0; }
+.belt-bar svg { flex-shrink: 0; display: block; }
 .back-btn {
   background: none;
   border: none;
@@ -772,20 +772,96 @@ h1, h2, h3, .heading {
     <div class="header-center">
       <h1 id="headerTitle">FWB Gaggle</h1>
       <div class="belt-bar" id="beltBar">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="13" viewBox="0 0 20 13">
-          <rect x="0" y="4" width="20" height="5" rx="2" fill="#d4af37"/>
-          <rect x="6" y="0" width="8" height="13" rx="2" fill="#b8960c"/>
-          <rect x="7.5" y="1.5" width="5" height="10" rx="1.5" fill="#d4af37"/>
-          <circle cx="10" cy="6.5" r="1.8" fill="#0d2818"/>
-          <circle cx="10" cy="6.5" r="0.9" fill="#d4af37"/>
+        <svg xmlns="http://www.w3.org/2000/svg" width="52" height="34" viewBox="0 0 52 34">
+          <!-- Strap -->
+          <rect x="0" y="13" width="52" height="8" rx="3" fill="#5e3d00"/>
+          <rect x="0" y="13.5" width="52" height="2.5" rx="1.5" fill="#c8940e" opacity="0.45"/>
+          <circle cx="2.5" cy="17" r="1.5" fill="#d4af37"/>
+          <circle cx="49.5" cy="17" r="1.5" fill="#d4af37"/>
+          <!-- Left side plate -->
+          <rect x="3" y="9" width="13" height="17" rx="2.5" fill="#3d2800"/>
+          <rect x="4" y="10" width="11" height="15" rx="2" fill="#d4af37"/>
+          <rect x="5" y="11" width="9" height="13" rx="1.5" fill="#b8960c"/>
+          <circle cx="9.5" cy="17.5" r="3.5" fill="#3d2800"/>
+          <circle cx="9.5" cy="17.5" r="2.5" fill="#d4af37"/>
+          <circle cx="9.5" cy="17.5" r="1.3" fill="#3d2800"/>
+          <circle cx="9.5" cy="17.5" r="0.6" fill="#d4af37"/>
+          <!-- Right side plate -->
+          <rect x="36" y="9" width="13" height="17" rx="2.5" fill="#3d2800"/>
+          <rect x="37" y="10" width="11" height="15" rx="2" fill="#d4af37"/>
+          <rect x="38" y="11" width="9" height="13" rx="1.5" fill="#b8960c"/>
+          <circle cx="42.5" cy="17.5" r="3.5" fill="#3d2800"/>
+          <circle cx="42.5" cy="17.5" r="2.5" fill="#d4af37"/>
+          <circle cx="42.5" cy="17.5" r="1.3" fill="#3d2800"/>
+          <circle cx="42.5" cy="17.5" r="0.6" fill="#d4af37"/>
+          <!-- Center plate -->
+          <rect x="17" y="0" width="18" height="34" rx="4" fill="#3d2800"/>
+          <rect x="18" y="0.5" width="16" height="33" rx="3.5" fill="#d4af37"/>
+          <rect x="19.5" y="2" width="13" height="30" rx="3" fill="#b8960c"/>
+          <!-- Globe -->
+          <circle cx="26" cy="13" r="7" fill="#1a472a" stroke="#d4af37" stroke-width="1"/>
+          <path d="M19 13 Q26 10 33 13 Q26 16 19 13Z" fill="none" stroke="#d4af37" stroke-width="0.6"/>
+          <line x1="26" y1="6" x2="26" y2="20" stroke="#d4af37" stroke-width="0.6"/>
+          <path d="M20.5 10 Q26 8.5 31.5 10" fill="none" stroke="#d4af37" stroke-width="0.5"/>
+          <path d="M20.5 16 Q26 17.5 31.5 16" fill="none" stroke="#d4af37" stroke-width="0.5"/>
+          <path d="M22 6.5 Q23 13 22 19.5" fill="none" stroke="#d4af37" stroke-width="0.4" opacity="0.7"/>
+          <path d="M30 6.5 Q29 13 30 19.5" fill="none" stroke="#d4af37" stroke-width="0.4" opacity="0.7"/>
+          <!-- Diamond stars -->
+          <polygon points="22,24 22.6,22.5 23.2,24 22.6,25.5" fill="#d4af37"/>
+          <polygon points="25.4,24 26,22.5 26.6,24 26,25.5" fill="#d4af37"/>
+          <polygon points="28.8,24 29.4,22.5 30,24 29.4,25.5" fill="#d4af37"/>
+          <!-- Laurel wreath -->
+          <path d="M20 28.5 C20.5 27 22 27.5 22.5 26.5" stroke="#d4af37" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+          <path d="M20.5 30.5 C21.5 29 23 29.5 23.5 28.5" stroke="#d4af37" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+          <path d="M29.5 26.5 C30 27.5 31.5 27 32 28.5" stroke="#d4af37" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+          <path d="M28.5 28.5 C29 29.5 30.5 29 31.5 30.5" stroke="#d4af37" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+          <polygon points="26,28.5 26.6,27 27.2,28.5 26.6,30" fill="#d4af37"/>
         </svg>
         <span id="beltHolderName">Josh</span>
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="13" viewBox="0 0 20 13">
-          <rect x="0" y="4" width="20" height="5" rx="2" fill="#d4af37"/>
-          <rect x="6" y="0" width="8" height="13" rx="2" fill="#b8960c"/>
-          <rect x="7.5" y="1.5" width="5" height="10" rx="1.5" fill="#d4af37"/>
-          <circle cx="10" cy="6.5" r="1.8" fill="#0d2818"/>
-          <circle cx="10" cy="6.5" r="0.9" fill="#d4af37"/>
+        <svg xmlns="http://www.w3.org/2000/svg" width="52" height="34" viewBox="0 0 52 34" style="transform:scaleX(-1)">
+          <!-- Strap -->
+          <rect x="0" y="13" width="52" height="8" rx="3" fill="#5e3d00"/>
+          <rect x="0" y="13.5" width="52" height="2.5" rx="1.5" fill="#c8940e" opacity="0.45"/>
+          <circle cx="2.5" cy="17" r="1.5" fill="#d4af37"/>
+          <circle cx="49.5" cy="17" r="1.5" fill="#d4af37"/>
+          <!-- Left side plate -->
+          <rect x="3" y="9" width="13" height="17" rx="2.5" fill="#3d2800"/>
+          <rect x="4" y="10" width="11" height="15" rx="2" fill="#d4af37"/>
+          <rect x="5" y="11" width="9" height="13" rx="1.5" fill="#b8960c"/>
+          <circle cx="9.5" cy="17.5" r="3.5" fill="#3d2800"/>
+          <circle cx="9.5" cy="17.5" r="2.5" fill="#d4af37"/>
+          <circle cx="9.5" cy="17.5" r="1.3" fill="#3d2800"/>
+          <circle cx="9.5" cy="17.5" r="0.6" fill="#d4af37"/>
+          <!-- Right side plate -->
+          <rect x="36" y="9" width="13" height="17" rx="2.5" fill="#3d2800"/>
+          <rect x="37" y="10" width="11" height="15" rx="2" fill="#d4af37"/>
+          <rect x="38" y="11" width="9" height="13" rx="1.5" fill="#b8960c"/>
+          <circle cx="42.5" cy="17.5" r="3.5" fill="#3d2800"/>
+          <circle cx="42.5" cy="17.5" r="2.5" fill="#d4af37"/>
+          <circle cx="42.5" cy="17.5" r="1.3" fill="#3d2800"/>
+          <circle cx="42.5" cy="17.5" r="0.6" fill="#d4af37"/>
+          <!-- Center plate -->
+          <rect x="17" y="0" width="18" height="34" rx="4" fill="#3d2800"/>
+          <rect x="18" y="0.5" width="16" height="33" rx="3.5" fill="#d4af37"/>
+          <rect x="19.5" y="2" width="13" height="30" rx="3" fill="#b8960c"/>
+          <!-- Globe -->
+          <circle cx="26" cy="13" r="7" fill="#1a472a" stroke="#d4af37" stroke-width="1"/>
+          <path d="M19 13 Q26 10 33 13 Q26 16 19 13Z" fill="none" stroke="#d4af37" stroke-width="0.6"/>
+          <line x1="26" y1="6" x2="26" y2="20" stroke="#d4af37" stroke-width="0.6"/>
+          <path d="M20.5 10 Q26 8.5 31.5 10" fill="none" stroke="#d4af37" stroke-width="0.5"/>
+          <path d="M20.5 16 Q26 17.5 31.5 16" fill="none" stroke="#d4af37" stroke-width="0.5"/>
+          <path d="M22 6.5 Q23 13 22 19.5" fill="none" stroke="#d4af37" stroke-width="0.4" opacity="0.7"/>
+          <path d="M30 6.5 Q29 13 30 19.5" fill="none" stroke="#d4af37" stroke-width="0.4" opacity="0.7"/>
+          <!-- Diamond stars -->
+          <polygon points="22,24 22.6,22.5 23.2,24 22.6,25.5" fill="#d4af37"/>
+          <polygon points="25.4,24 26,22.5 26.6,24 26,25.5" fill="#d4af37"/>
+          <polygon points="28.8,24 29.4,22.5 30,24 29.4,25.5" fill="#d4af37"/>
+          <!-- Laurel wreath -->
+          <path d="M20 28.5 C20.5 27 22 27.5 22.5 26.5" stroke="#d4af37" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+          <path d="M20.5 30.5 C21.5 29 23 29.5 23.5 28.5" stroke="#d4af37" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+          <path d="M29.5 26.5 C30 27.5 31.5 27 32 28.5" stroke="#d4af37" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+          <path d="M28.5 28.5 C29 29.5 30.5 29 31.5 30.5" stroke="#d4af37" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+          <polygon points="26,28.5 26.6,27 27.2,28.5 26.6,30" fill="#d4af37"/>
         </svg>
       </div>
     </div>
