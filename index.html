@@ -39,8 +39,8 @@
 html { font-size: 16px; }
 body {
   font-family: 'Barlow', sans-serif;
-  background: var(--primary-deep);
-  color: var(--white);
+  background: var(--white);
+  color: var(--text-dark);
   min-height: 100dvh;
   overflow-x: hidden;
   -webkit-tap-highlight-color: transparent;
@@ -286,9 +286,9 @@ h1, h2, h3, .heading {
   width: 100%;
   padding: 12px;
   border-radius: var(--radius);
-  border: 1px solid rgba(255,255,255,0.2);
-  background: var(--primary);
-  color: var(--white);
+  border: 1px solid var(--border-light);
+  background: var(--white);
+  color: var(--text-dark);
   font-family: 'Barlow', sans-serif;
   font-size: 1rem;
   min-height: 48px;
@@ -298,7 +298,7 @@ h1, h2, h3, .heading {
   align-items: center;
   gap: 10px;
   padding: 10px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
+  border-bottom: 1px solid var(--border-light);
   flex-wrap: wrap;
 }
 .score-player {
@@ -306,14 +306,14 @@ h1, h2, h3, .heading {
   min-width: 0;
 }
 .score-player-name { font-weight: 600; font-size: 0.95rem; }
-.score-player-hdcp { font-size: 0.75rem; color: var(--gray); }
+.score-player-hdcp { font-size: 0.75rem; color: var(--text-muted); }
 .score-input {
   width: 64px;
   padding: 10px 8px;
   border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.2);
-  background: var(--primary-deep);
-  color: var(--white);
+  border: 1px solid var(--border-light);
+  background: var(--white);
+  color: var(--text-dark);
   font-size: 1.1rem;
   font-weight: 700;
   text-align: center;
@@ -341,16 +341,16 @@ h1, h2, h3, .heading {
   align-items: center;
   gap: 6px;
   font-size: 0.8rem;
-  color: var(--gray);
+  color: var(--text-muted);
   white-space: nowrap;
 }
 .money-input {
   width: 60px;
   padding: 5px 6px;
-  background: rgba(255,255,255,0.07);
-  border: 1px solid rgba(255,255,255,0.15);
+  background: var(--row-stripe);
+  border: 1px solid var(--border-light);
   border-radius: 6px;
-  color: var(--white);
+  color: var(--text-dark);
   font-size: 0.9rem;
   font-family: 'Barlow', sans-serif;
   text-align: center;
@@ -436,11 +436,12 @@ h1, h2, h3, .heading {
 
 /* --- History --- */
 .round-card {
-  background: var(--primary);
+  background: var(--white);
   border-radius: var(--radius);
   margin-bottom: 10px;
   overflow: hidden;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  border: 1px solid var(--border-light);
 }
 .round-header {
   display: flex;
@@ -450,11 +451,11 @@ h1, h2, h3, .heading {
   cursor: pointer;
   min-height: 48px;
 }
-.round-header:active { background: rgba(255,255,255,0.05); }
-.round-date { font-weight: 700; font-size: 0.95rem; }
-.round-meta { font-size: 0.8rem; color: var(--gray); }
-.round-winner { color: var(--gold); font-weight: 600; font-size: 0.85rem; }
-.round-expand { color: var(--gray); font-size: 1.2rem; transition: transform 0.2s; }
+.round-header:active { background: var(--row-hover); }
+.round-date { font-weight: 700; font-size: 0.95rem; color: var(--text-dark); }
+.round-meta { font-size: 0.8rem; color: var(--text-muted); }
+.round-winner { color: var(--gold-dark); font-weight: 600; font-size: 0.85rem; }
+.round-expand { color: var(--text-muted); font-size: 1.2rem; transition: transform 0.2s; }
 .round-expand.open { transform: rotate(180deg); }
 .round-detail {
   display: none;
@@ -465,14 +466,15 @@ h1, h2, h3, .heading {
 .round-detail th {
   text-align: left;
   padding: 6px 4px;
-  color: var(--gold);
+  color: var(--primary);
   font-family: 'Bebas Neue', sans-serif;
   font-size: 0.75rem;
-  border-bottom: 1px solid rgba(212,175,55,0.3);
+  border-bottom: 1px solid var(--border-light);
 }
 .round-detail td {
   padding: 6px 4px;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-dark);
 }
 .round-detail tr.winner-row { background: rgba(212,175,55,0.1); }
 .delete-round-btn {
@@ -494,12 +496,12 @@ h1, h2, h3, .heading {
   display: flex;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
+  border-bottom: 1px solid var(--border-light);
   gap: 10px;
 }
 .player-info { flex: 1; }
-.player-info-name { font-weight: 600; }
-.player-info-sub { font-size: 0.75rem; color: var(--gray); }
+.player-info-name { font-weight: 600; color: var(--text-dark); }
+.player-info-sub { font-size: 0.75rem; color: var(--text-muted); }
 .player-badge {
   font-size: 0.65rem;
   padding: 2px 8px;
@@ -507,13 +509,13 @@ h1, h2, h3, .heading {
   font-weight: 600;
   text-transform: uppercase;
 }
-.badge-active { background: rgba(74,222,128,0.2); color: var(--green-good); }
-.badge-inactive { background: rgba(156,163,175,0.2); color: var(--gray); }
+.badge-active { background: rgba(22,163,74,0.12); color: var(--green-good-on-light); }
+.badge-inactive { background: rgba(156,163,175,0.15); color: var(--text-muted); }
 .player-actions { display: flex; gap: 6px; }
 .player-actions button {
   background: none;
-  border: 1px solid rgba(255,255,255,0.15);
-  color: var(--cream);
+  border: 1px solid var(--border-light);
+  color: var(--primary);
   width: 40px;
   height: 40px;
   border-radius: 8px;
@@ -523,7 +525,7 @@ h1, h2, h3, .heading {
   align-items: center;
   justify-content: center;
 }
-.player-actions button:active { background: rgba(255,255,255,0.1); }
+.player-actions button:active { background: var(--row-stripe); }
 
 /* --- Modal --- */
 .modal-overlay {
@@ -597,14 +599,16 @@ h1, h2, h3, .heading {
 .ref-table td {
   padding: 4px 8px;
   text-align: center;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-dark);
 }
 
 .payout-calc {
-  background: var(--primary);
+  background: var(--row-stripe);
   border-radius: var(--radius);
   padding: 16px;
   margin-bottom: 16px;
+  border: 1px solid var(--border-light);
 }
 .payout-result {
   margin-top: 12px;
@@ -680,7 +684,7 @@ h1, h2, h3, .heading {
 /* Scrollbar styling */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 2px; }
 
 /* ============================================================
    RESPONSIVE BREAKPOINTS
@@ -761,7 +765,7 @@ h1, h2, h3, .heading {
   <div class="stats-banner" id="statsBanner">
     <div class="stat-box"><div class="stat-value" id="statRounds">0</div><div class="stat-label">Rounds</div></div>
     <div class="stat-box"><div class="stat-value" id="statLastDate">—</div><div class="stat-label">Last Round</div></div>
-    <div class="stat-box"><div class="stat-value" id="statLeader">—</div><div class="stat-label">Leader</div></div>
+    <div class="stat-box"><div class="stat-value" id="statLeader">—</div><div class="stat-label">Top Winner</div></div>
   </div>
 
   <div class="content-panel">
@@ -831,7 +835,7 @@ h1, h2, h3, .heading {
 
   <h2 class="section-title">Payout Calculator</h2>
   <div class="payout-calc">
-    <label style="color:var(--gray);font-size:0.85rem">Number of Players ($10 buy-in)</label>
+    <label style="color:var(--text-muted);font-size:0.85rem">Number of Players ($10 buy-in)</label>
     <input type="number" inputmode="numeric" id="payoutPlayers" class="score-input" style="width:80px;margin-top:6px" value="12" min="1" oninput="calcPayout()">
     <div class="payout-result" id="payoutResult"></div>
   </div>
@@ -1172,8 +1176,14 @@ async function renderDashboard() {
   } else {
     document.getElementById('statLastDate').textContent = '—';
   }
-  const leader = activePlayers.reduce((best, p) => (!best || p.currentHdcp < best.currentHdcp) ? p : best, null);
-  document.getElementById('statLeader').textContent = leader ? leader.name : '—';
+  const leader = activePlayers.reduce((best, p) => {
+    if (!best) return p;
+    if (p.wins !== best.wins) return p.wins > best.wins ? p : best;
+    const pMoney = (p.skinsWinnings || 0) + (p.greenyWinnings || 0);
+    const bMoney = (best.skinsWinnings || 0) + (best.greenyWinnings || 0);
+    return pMoney > bMoney ? p : best;
+  }, null);
+  document.getElementById('statLeader').textContent = leader && leader.wins > 0 ? leader.name : '—';
 
   // Find player with most wins for highlighting
   const maxWins = Math.max(0, ...activePlayers.map(p => p.wins));
