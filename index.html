@@ -71,6 +71,20 @@ h1, h2, h3, .heading {
   font-size: 1.5rem;
   color: var(--gold);
 }
+.header-center { flex: 1; text-align: center; }
+.belt-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 2px;
+  font-size: 0.7rem;
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 1px;
+  color: var(--cream);
+  opacity: 0.9;
+}
+.belt-bar svg { flex-shrink: 0; }
 .back-btn {
   background: none;
   border: none;
@@ -755,7 +769,26 @@ h1, h2, h3, .heading {
 <header class="app-header">
   <div class="app-header-inner">
     <button class="back-btn" id="backBtn" style="visibility:hidden" aria-label="Back">&#8592;</button>
-    <h1 id="headerTitle">FWB Gaggle</h1>
+    <div class="header-center">
+      <h1 id="headerTitle">FWB Gaggle</h1>
+      <div class="belt-bar" id="beltBar">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="13" viewBox="0 0 20 13">
+          <rect x="0" y="4" width="20" height="5" rx="2" fill="#d4af37"/>
+          <rect x="6" y="0" width="8" height="13" rx="2" fill="#b8960c"/>
+          <rect x="7.5" y="1.5" width="5" height="10" rx="1.5" fill="#d4af37"/>
+          <circle cx="10" cy="6.5" r="1.8" fill="#0d2818"/>
+          <circle cx="10" cy="6.5" r="0.9" fill="#d4af37"/>
+        </svg>
+        <span id="beltHolderName">Josh</span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="13" viewBox="0 0 20 13">
+          <rect x="0" y="4" width="20" height="5" rx="2" fill="#d4af37"/>
+          <rect x="6" y="0" width="8" height="13" rx="2" fill="#b8960c"/>
+          <rect x="7.5" y="1.5" width="5" height="10" rx="1.5" fill="#d4af37"/>
+          <circle cx="10" cy="6.5" r="1.8" fill="#0d2818"/>
+          <circle cx="10" cy="6.5" r="0.9" fill="#d4af37"/>
+        </svg>
+      </div>
+    </div>
     <div class="header-spacer"></div>
   </div>
 </header>
@@ -1057,6 +1090,31 @@ async function fullRecalculate() {
   }
 
   for (const p of players) await putPlayer(p);
+  updateBeltHolderFromRounds(rounds);
+  renderBeltHolder();
+}
+
+// ========================================
+// BELT HOLDER
+// ========================================
+function getBeltHolder() {
+  return localStorage.getItem('beltHolder') || 'Josh';
+}
+function setBeltHolder(name) {
+  localStorage.setItem('beltHolder', name);
+}
+function isMondayDate(dateStr) {
+  return new Date(dateStr + 'T00:00:00').getDay() === 1;
+}
+function updateBeltHolderFromRounds(rounds) {
+  const mondayRounds = rounds
+    .filter(r => isMondayDate(r.date) && r.winnerName)
+    .sort((a, b) => b.date.localeCompare(a.date) || (b.id > a.id ? 1 : -1));
+  if (mondayRounds.length > 0) setBeltHolder(mondayRounds[0].winnerName);
+}
+function renderBeltHolder() {
+  const el = document.getElementById('beltHolderName');
+  if (el) el.textContent = getBeltHolder();
 }
 
 // ========================================
@@ -1435,6 +1493,10 @@ async function saveRound() {
       }
     }
 
+    if (isMondayDate(date) && winnerPlayer) {
+      setBeltHolder(winnerPlayer.name);
+      renderBeltHolder();
+    }
     toast('Round saved! Winner: ' + (winnerPlayer ? winnerPlayer.name : '?') + ' &#127942;');
     showScreen('screenDashboard');
   } finally {
@@ -1908,6 +1970,7 @@ function esc(str) {
 // ========================================
 async function init() {
   await initDB();
+  renderBeltHolder();
   await seedDefaultPlayers();
   const rounds = await getRounds();
   if (rounds.length === 0) await doSeedSampleData();
