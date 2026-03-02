@@ -1014,6 +1014,60 @@ h1, h2, h3, .heading {
     <div class="payout-result" id="payoutResult"></div>
   </div>
 
+  <h2 class="section-title">Skins Calculator</h2>
+  <div class="payout-calc">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+      <div>
+        <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">Game Type</label>
+        <select id="skinsGameType" class="date-input" style="width:160px;padding:10px 8px" onchange="skinsToggleMode()">
+          <option value="rates">Per-hole rates</option>
+          <option value="pot">Fixed pot</option>
+        </select>
+      </div>
+      <div>
+        <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">Carry Over</label>
+        <select id="skinsCarry" class="date-input" style="width:90px;padding:10px 8px">
+          <option value="0" selected>No</option>
+          <option value="1">Yes</option>
+        </select>
+      </div>
+      <div>
+        <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">Holes</label>
+        <select id="skinsHoles" class="date-input" style="width:80px;padding:10px 8px">
+          <option value="9" selected>9</option>
+          <option value="18">18</option>
+        </select>
+      </div>
+    </div>
+    <div id="skinsRatesConfig" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      <div>
+        <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">Skin ($)</label>
+        <input type="number" inputmode="decimal" id="skinRate" class="score-input" style="width:64px" value="1" min="0.5" step="0.5">
+      </div>
+      <div>
+        <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">Birdie ($)</label>
+        <input type="number" inputmode="decimal" id="birdieRate" class="score-input" style="width:64px" value="2" min="0.5" step="0.5">
+      </div>
+      <div>
+        <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">Eagle ($)</label>
+        <input type="number" inputmode="decimal" id="eagleRate" class="score-input" style="width:64px" value="5" min="1" step="1">
+      </div>
+    </div>
+    <div id="skinsPotConfig" style="display:none;margin-bottom:12px">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+        <div>
+          <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">$ Per Player</label>
+          <input type="number" inputmode="decimal" id="skinsPotBuyin" class="score-input" style="width:80px" value="10" min="1" oninput="skinsPotUpdate()">
+        </div>
+        <div id="skinsPotTotal" style="padding:10px 0;font-weight:700;color:var(--gold);font-size:1rem">$0 pot</div>
+      </div>
+    </div>
+    <div id="skinsPlayers" style="margin-bottom:12px"></div>
+    <button class="btn btn-secondary" style="margin-bottom:12px" onclick="buildSkinsTable()">Build Score Card</button>
+    <div id="skinsTableWrap"></div>
+    <div id="skinsResults"></div>
+  </div>
+
   <h2 class="section-title">Data Management</h2>
   <div class="data-section">
     <button class="btn btn-secondary btn-full" onclick="exportData()">Export Data (JSON)</button>
@@ -1967,6 +2021,7 @@ function renderSettings() {
   table.innerHTML = rows;
 
   calcPayout();
+  renderSkinsPlayers();
 }
 
 function calcPayout() {
@@ -1991,6 +2046,150 @@ function calcPayout() {
     html += `<div style="color:#cd7f32">&#129353; 3rd: $${third.toFixed(2)}</div>`;
   }
   document.getElementById('payoutResult').innerHTML = html;
+}
+
+// ── Skins Calculator ──────────────────────────────────────────
+function skinsToggleMode() {
+  const mode = document.getElementById('skinsGameType').value;
+  document.getElementById('skinsRatesConfig').style.display = mode === 'rates' ? 'flex' : 'none';
+  document.getElementById('skinsPotConfig').style.display = mode === 'pot' ? 'block' : 'none';
+  document.getElementById('skinsTableWrap').innerHTML = '';
+  document.getElementById('skinsResults').innerHTML = '';
+}
+
+function skinsPotUpdate() {
+  const buyin = parseFloat(document.getElementById('skinsPotBuyin')?.value) || 0;
+  const N = document.querySelectorAll('.skins-player-cb:checked').length;
+  const el = document.getElementById('skinsPotTotal');
+  if (el) el.textContent = `$${(buyin * N).toFixed(2)} pot`;
+}
+
+async function renderSkinsPlayers() {
+  const players = (await getPlayers()).filter(p => p.active);
+  const el = document.getElementById('skinsPlayers');
+  if (!el) return;
+  el.innerHTML =
+    '<div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:6px">Select players in this round:</div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:10px">' +
+    players.map(p => `<label style="display:flex;align-items:center;gap:5px;font-size:0.9rem;cursor:pointer;padding:4px 0">
+      <input type="checkbox" class="skins-player-cb" value="${p.id}" data-name="${esc(p.name)}" onchange="skinsPotUpdate()">
+      ${esc(p.name)}
+    </label>`).join('') + '</div>';
+}
+
+function buildSkinsTable() {
+  const holes = parseInt(document.getElementById('skinsHoles').value);
+  const cbs = document.querySelectorAll('.skins-player-cb:checked');
+  if (cbs.length < 2) { toast('Select at least 2 players'); return; }
+  const players = Array.from(cbs).map(cb => ({ id: cb.value, name: cb.dataset.name }));
+  skinsPotUpdate();
+
+  let html = '<div style="overflow-x:auto;margin-bottom:12px"><table class="ref-table"><thead><tr>';
+  html += '<th style="min-width:36px">#</th><th style="min-width:44px">Par</th>';
+  players.forEach(p => { html += `<th style="min-width:52px">${esc(p.name)}</th>`; });
+  html += '</tr></thead><tbody>';
+  for (let h = 1; h <= holes; h++) {
+    html += `<tr>
+      <td style="text-align:center;font-weight:600;color:var(--text-muted)">${h}</td>
+      <td><input type="number" inputmode="numeric" class="score-input" id="skinsPar_${h}" style="width:44px;text-align:center;padding:6px 2px" value="4" min="3" max="5"></td>
+      ${players.map(p => `<td><input type="number" inputmode="numeric" class="score-input" id="skinsScore_${p.id}_${h}" style="width:50px;text-align:center;padding:6px 2px" placeholder="—" min="1" max="15"></td>`).join('')}
+    </tr>`;
+  }
+  html += '</tbody></table></div>';
+  html += '<button class="btn btn-primary btn-full" onclick="calcSkins()">Calculate Skins</button>';
+  document.getElementById('skinsTableWrap').innerHTML = html;
+  document.getElementById('skinsResults').innerHTML = '';
+}
+
+function calcSkins() {
+  const holes = parseInt(document.getElementById('skinsHoles').value);
+  const carryOver = document.getElementById('skinsCarry').value === '1';
+  const mode = document.getElementById('skinsGameType').value;
+  const cbs = document.querySelectorAll('.skins-player-cb:checked');
+  const players = Array.from(cbs).map(cb => ({ id: cb.value, name: cb.dataset.name, net: 0 }));
+  const N = players.length;
+  const byId = {};
+  players.forEach(p => { byId[p.id] = p; });
+
+  let skinRate = 1, birdieRate = 2, eagleRate = 5, potPerHole = 0;
+  if (mode === 'rates') {
+    skinRate  = parseFloat(document.getElementById('skinRate').value)   || 1;
+    birdieRate = parseFloat(document.getElementById('birdieRate').value) || 2;
+    eagleRate  = parseFloat(document.getElementById('eagleRate').value)  || 5;
+  } else {
+    const buyin = parseFloat(document.getElementById('skinsPotBuyin').value) || 0;
+    potPerHole = (buyin * N) / holes;
+  }
+
+  let carry = 0;
+  const holeResults = [];
+
+  for (let h = 1; h <= holes; h++) {
+    const par = parseInt(document.getElementById(`skinsPar_${h}`)?.value) || 4;
+    const scores = [];
+    players.forEach(p => {
+      const el = document.getElementById(`skinsScore_${p.id}_${h}`);
+      const val = el?.value.trim();
+      if (val) scores.push({ id: p.id, name: p.name, strokes: parseInt(val) });
+    });
+    if (scores.length < 2) { holeResults.push({ hole: h, text: '—', cls: '' }); continue; }
+
+    const minScore = Math.min(...scores.map(s => s.strokes));
+    const winners = scores.filter(s => s.strokes === minScore);
+    const others  = scores.filter(s => s.strokes !== minScore);
+    const isBirdie = minScore === par - 1;
+    const isEagle  = minScore <= par - 2;
+
+    if (winners.length === 1) {
+      const w = winners[0];
+      if (mode === 'rates') {
+        const rate  = isEagle ? eagleRate : isBirdie ? birdieRate : skinRate;
+        const total = rate + carry;
+        const label = isEagle ? 'Eagle' : isBirdie ? 'Birdie' : 'Skin';
+        byId[w.id].net += total * (N - 1);
+        scores.filter(s => s.id !== w.id).forEach(s => { byId[s.id].net -= total; });
+        holeResults.push({ hole: h, text: `${w.name} — ${label} +$${(total * (N - 1)).toFixed(2)}${carry > 0 ? ` (+$${carry} carry)` : ''}`, cls: 'gold' });
+        carry = 0;
+      } else {
+        const total = potPerHole + carry;
+        byId[w.id].net += total;
+        holeResults.push({ hole: h, text: `${w.name} wins $${total.toFixed(2)}`, cls: 'gold' });
+        carry = 0;
+      }
+    } else {
+      // Tie
+      if (mode === 'rates' && isBirdie && others.length > 0) {
+        // Birdie tie: each birdie player gets $1 consolation per non-birdie player
+        winners.forEach(w => { byId[w.id].net += others.length; });
+        others.forEach(o => { byId[o.id].net -= winners.length; });
+        holeResults.push({ hole: h, text: `Birdie tie — ${winners.map(w => w.name).join(' & ')} +$${others.length} each (consolation)`, cls: 'green' });
+        if (carryOver) carry += skinRate;
+      } else {
+        holeResults.push({ hole: h, text: `Push — ${winners.map(w => w.name).join(' & ')} tied`, cls: 'muted' });
+        if (carryOver) carry += mode === 'rates' ? skinRate : potPerHole;
+      }
+    }
+  }
+
+  let html = '<div style="margin-top:16px">';
+  html += '<p style="font-weight:600;margin-bottom:8px">Hole Results</p>';
+  html += '<table class="ref-table" style="margin-bottom:16px"><thead><tr><th>#</th><th>Result</th></tr></thead><tbody>';
+  holeResults.forEach(r => {
+    const style = r.cls === 'gold' ? 'color:var(--gold)' : r.cls === 'green' ? 'color:#4ade80' : 'color:var(--text-muted)';
+    html += `<tr><td style="text-align:center;width:44px">${r.hole}</td><td style="${style}">${r.text}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  html += '<p style="font-weight:600;margin-bottom:8px">Net Winnings</p>';
+  [...players].sort((a, b) => b.net - a.net).forEach(p => {
+    const col = p.net > 0 ? 'var(--gold)' : p.net < 0 ? 'var(--red-bad)' : 'var(--text-muted)';
+    html += `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border-light)">
+      <span>${esc(p.name)}</span>
+      <span style="color:${col};font-weight:700">${p.net >= 0 ? '+' : ''}$${p.net.toFixed(2)}</span>
+    </div>`;
+  });
+  if (carry > 0) html += `<div style="color:var(--text-muted);font-size:0.82rem;margin-top:8px">$${carry.toFixed(2)} carried over — not awarded</div>`;
+  html += '</div>';
+  document.getElementById('skinsResults').innerHTML = html;
 }
 
 async function exportData() {
