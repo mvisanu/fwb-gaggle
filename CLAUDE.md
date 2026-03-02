@@ -182,7 +182,7 @@ Closest-to-pin on par 3 holes. Configurable $ per greeny (default $1) and number
 
 ## Default Players (preloaded on first launch)
 
-Visanu 24, Biscuit 18, Julius 22, PK 15, Todd 20, Timmy 15, Tony 14, Rich 15, Josh 14, Jordan 18, Chuck 24, Steve 14, Ben 14, Ute 17, Haj 22, Mikey 22
+Visanu 24, Biscuit 18, Julius 22, PK 15, Todd 20, Timmy 15, Tony 14, Rich 15, Josh 14, Jordan 18, Chuck 24, Steve 14, Ben 14, Yut 17, Haj 22, Mikey 22
 
 ## QA Checklist (verify before finishing)
 
