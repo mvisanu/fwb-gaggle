@@ -868,7 +868,7 @@ h1, h2, h3, .heading {
           <path d="M28.5 28.5 C29 29.5 30.5 29 31.5 30.5" stroke="#d4af37" stroke-width="0.8" fill="none" stroke-linecap="round"/>
           <polygon points="26,28.5 26.6,27 27.2,28.5 26.6,30" fill="#d4af37"/>
         </svg>
-        <span class="belt-label">Champion:</span><span id="beltHolderName">Josh</span><button class="belt-edit-btn" onclick="openChampionSelector()" title="Set champion">✎</button>
+        <span class="belt-label">Champion:</span><span id="beltHolderName">Josh</span><button class="belt-edit-btn" onclick="requirePin(()=>openChampionSelector())" title="Set champion">✎</button>
         <svg xmlns="http://www.w3.org/2000/svg" width="52" height="34" viewBox="0 0 52 34" style="transform:scaleX(-1)">
           <!-- Strap -->
           <rect x="0" y="13" width="52" height="8" rx="3" fill="#5e3d00"/>
@@ -968,7 +968,7 @@ h1, h2, h3, .heading {
     <div id="scoreEntryList"></div>
     <div style="display:flex;gap:10px;margin-top:16px">
       <button class="btn btn-secondary btn-full" onclick="showScreen('screenDashboard')">Cancel</button>
-      <button class="btn btn-primary btn-full" id="saveRoundBtn" onclick="saveRound()">Save Round</button>
+      <button class="btn btn-primary btn-full" id="saveRoundBtn" onclick="requirePin(()=>saveRound())">Save Round</button>
     </div>
   </div>
 </div>
