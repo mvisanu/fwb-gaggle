@@ -1899,6 +1899,10 @@ async function saveRound() {
   document.getElementById('saveRoundBtn').disabled = true;
 
   try {
+    const allRounds = await getRounds();
+    const existingRound = allRounds.find(r => r.date === date);
+    const isReplacing = !!existingRound;
+
     const players = await getPlayers();
 
     // Fill in player names
@@ -1927,17 +1931,23 @@ async function saveRound() {
       winnerName: winnerPlayer ? winnerPlayer.name : ''
     };
 
-    await putRound(round);
-
-    // Update player handicaps and wins
-    for (const s of scores) {
-      const p = players.find(p => p.id === s.playerId);
-      if (p) {
-        p.currentHdcp = s.hdcpAfter;
-        if (p.id === winnerId) p.wins++;
-        p.skinsWinnings = (p.skinsWinnings || 0) + (s.skinsWon || 0);
-        p.greenyWinnings = (p.greenyWinnings || 0) + (s.greenyWon || 0);
-        await putPlayer(p);
+    if (isReplacing) {
+      // Delete old round then save new one, recalculate everything from scratch
+      await deleteRound(existingRound.id);
+      await putRound(round);
+      await fullRecalculate();
+    } else {
+      await putRound(round);
+      // Update player handicaps, wins and winnings directly
+      for (const s of scores) {
+        const p = players.find(p => p.id === s.playerId);
+        if (p) {
+          p.currentHdcp = s.hdcpAfter;
+          if (p.id === winnerId) p.wins++;
+          p.skinsWinnings = (p.skinsWinnings || 0) + (s.skinsWon || 0);
+          p.greenyWinnings = (p.greenyWinnings || 0) + (s.greenyWon || 0);
+          await putPlayer(p);
+        }
       }
     }
 
@@ -1945,7 +1955,8 @@ async function saveRound() {
       setBeltHolder(winnerPlayer.name);
     }
     renderBeltHolder();
-    toast('Round saved! Winner: ' + (winnerPlayer ? winnerPlayer.name : '?') + ' &#127942;');
+    const label = isReplacing ? 'Round updated!' : 'Round saved!';
+    toast(label + ' Winner: ' + (winnerPlayer ? winnerPlayer.name : '?') + ' &#127942;');
     showScreen('screenDashboard');
     autoBackup();
   } finally {
