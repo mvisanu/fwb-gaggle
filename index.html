@@ -1068,6 +1068,30 @@ h1, h2, h3, .heading {
     <div id="skinsResults"></div>
   </div>
 
+  <h2 class="section-title">Greeny Calculator</h2>
+  <div class="payout-calc">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+      <div>
+        <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">$ Per Greeny</label>
+        <input type="number" inputmode="decimal" id="greenyRate" class="score-input" style="width:72px" value="1" min="0.5" step="0.5">
+      </div>
+      <div>
+        <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">Par 3 Holes</label>
+        <select id="greenyPar3Count" class="date-input" style="width:80px;padding:10px 8px">
+          <option value="2">2</option>
+          <option value="3" selected>3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+        </select>
+      </div>
+    </div>
+    <div id="greenyPlayers" style="margin-bottom:12px"></div>
+    <button class="btn btn-secondary" style="margin-bottom:12px" onclick="buildGreenyCard()">Build Greeny Card</button>
+    <div id="greenyCardWrap"></div>
+    <div id="greenyResults"></div>
+  </div>
+
   <h2 class="section-title">Data Management</h2>
   <div class="data-section">
     <button class="btn btn-secondary btn-full" onclick="exportData()">Export Data (JSON)</button>
@@ -2030,6 +2054,7 @@ function renderSettings() {
 
   calcPayout();
   renderSkinsPlayers();
+  renderGreenyPlayers();
 }
 
 function calcPayout() {
@@ -2198,6 +2223,85 @@ function calcSkins() {
   if (carry > 0) html += `<div style="color:var(--text-muted);font-size:0.82rem;margin-top:8px">$${carry.toFixed(2)} carried over — not awarded</div>`;
   html += '</div>';
   document.getElementById('skinsResults').innerHTML = html;
+}
+
+// ── Greeny Calculator ─────────────────────────────────────────
+async function renderGreenyPlayers() {
+  const players = (await getPlayers()).filter(p => p.active);
+  const el = document.getElementById('greenyPlayers');
+  if (!el) return;
+  el.innerHTML =
+    '<div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:6px">Select players in this round:</div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:10px">' +
+    players.map(p => `<label style="display:flex;align-items:center;gap:5px;font-size:0.9rem;cursor:pointer;padding:4px 0">
+      <input type="checkbox" class="greeny-player-cb" value="${p.id}" data-name="${esc(p.name)}">
+      ${esc(p.name)}
+    </label>`).join('') + '</div>';
+}
+
+function buildGreenyCard() {
+  const par3Count = parseInt(document.getElementById('greenyPar3Count').value);
+  const cbs = document.querySelectorAll('.greeny-player-cb:checked');
+  if (cbs.length < 2) { toast('Select at least 2 players'); return; }
+  const players = Array.from(cbs).map(cb => ({ id: cb.value, name: cb.dataset.name }));
+
+  let html = '';
+  for (let i = 1; i <= par3Count; i++) {
+    html += `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border-light)">
+      <span style="font-weight:600;color:var(--text-muted);min-width:56px">Par 3 #${i}</span>
+      <select id="greenyWinner_${i}" class="date-input" style="flex:1;padding:8px">
+        <option value="">— No winner —</option>
+        ${players.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}
+      </select>
+    </div>`;
+  }
+  html += '<button class="btn btn-primary btn-full" style="margin-top:12px" onclick="calcGreeny()">Calculate Greeny</button>';
+  document.getElementById('greenyCardWrap').innerHTML = html;
+  document.getElementById('greenyResults').innerHTML = '';
+}
+
+function calcGreeny() {
+  const rate = parseFloat(document.getElementById('greenyRate').value) || 1;
+  const par3Count = parseInt(document.getElementById('greenyPar3Count').value);
+  const cbs = document.querySelectorAll('.greeny-player-cb:checked');
+  const players = Array.from(cbs).map(cb => ({ id: cb.value, name: cb.dataset.name, net: 0 }));
+  const N = players.length;
+  const byId = {};
+  players.forEach(p => { byId[p.id] = p; });
+
+  const holeResults = [];
+  for (let i = 1; i <= par3Count; i++) {
+    const winnerId = document.getElementById(`greenyWinner_${i}`)?.value;
+    if (!winnerId) {
+      holeResults.push({ hole: i, text: 'No winner', cls: 'muted' });
+      continue;
+    }
+    const winner = byId[winnerId];
+    if (!winner) continue;
+    const earned = rate * (N - 1);
+    winner.net += earned;
+    players.filter(p => p.id !== winnerId).forEach(p => { p.net -= rate; });
+    holeResults.push({ hole: i, text: `${esc(winner.name)} +$${earned.toFixed(2)}`, cls: 'gold' });
+  }
+
+  let html = '<div style="margin-top:16px">';
+  html += '<p style="font-weight:600;margin-bottom:8px">Par 3 Results</p>';
+  html += '<table class="ref-table" style="margin-bottom:16px"><thead><tr><th>Par 3</th><th>Result</th></tr></thead><tbody>';
+  holeResults.forEach(r => {
+    const style = r.cls === 'gold' ? 'color:var(--gold)' : 'color:var(--text-muted)';
+    html += `<tr><td style="text-align:center;width:64px">#${r.hole}</td><td style="${style}">${r.text}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  html += '<p style="font-weight:600;margin-bottom:8px">Net Winnings</p>';
+  [...players].sort((a, b) => b.net - a.net).forEach(p => {
+    const col = p.net > 0 ? 'var(--gold)' : p.net < 0 ? 'var(--red-bad)' : 'var(--text-muted)';
+    html += `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border-light)">
+      <span>${esc(p.name)}</span>
+      <span style="color:${col};font-weight:700">${p.net >= 0 ? '+' : ''}$${p.net.toFixed(2)}</span>
+    </div>`;
+  });
+  html += '</div>';
+  document.getElementById('greenyResults').innerHTML = html;
 }
 
 async function exportData() {
