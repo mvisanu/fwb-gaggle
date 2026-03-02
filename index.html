@@ -1193,7 +1193,7 @@ h1, h2, h3, .heading {
 
   <div class="faq-item">
     <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">How is the round winner decided?<span class="faq-arrow">&#9660;</span></div>
-    <div class="faq-a">The player with the lowest net score wins. Net score = Stableford points minus handicap before the round (negative means you beat your handicap). If two players tie, the one with the lower handicap wins.</div>
+    <div class="faq-a">The player with the highest net score wins. Net score = Stableford points minus handicap before the round (positive means you beat your handicap). If two players tie, the one with the lower handicap wins.</div>
   </div>
 
   <div class="faq-item">
@@ -1449,7 +1449,7 @@ async function fullRecalculate() {
   rounds.sort((a, b) => a.date.localeCompare(b.date) || (a.id > b.id ? 1 : -1));
 
   for (const round of rounds) {
-    let bestNet = Infinity;
+    let bestNet = -Infinity;
     let winnerId = null;
     let winnerHdcp = Infinity;
 
@@ -1463,7 +1463,8 @@ async function fullRecalculate() {
       player.skinsWinnings = (player.skinsWinnings || 0) + (score.skinsWon || 0);
       player.greenyWinnings = (player.greenyWinnings || 0) + (score.greenyWon || 0);
 
-      if (score.netScore < bestNet || (score.netScore === bestNet && score.hdcpBefore < winnerHdcp)) {
+      // Highest net wins; ties go to lower handicap
+      if (score.netScore > bestNet || (score.netScore === bestNet && score.hdcpBefore < winnerHdcp)) {
         bestNet = score.netScore;
         winnerId = score.playerId;
         winnerHdcp = score.hdcpBefore;
@@ -1866,7 +1867,7 @@ function previewScore(input) {
 
   previewEl.innerHTML = `
     <span class="preview-item" style="color:${color}">New: ${newHdcp} ${arrow}</span>
-    <span class="preview-item" style="color:${net <= 0 ? 'var(--green-good)' : 'var(--red-bad)'}">Net: ${net >= 0 ? '+' : ''}${net}</span>
+    <span class="preview-item" style="color:${net > 0 ? 'var(--green-good)' : net < 0 ? 'var(--red-bad)' : 'var(--gray)'}">Net: ${net >= 0 ? '+' : ''}${net}</span>
   `;
 }
 
@@ -1906,10 +1907,10 @@ async function saveRound() {
       if (p) s.playerName = p.name;
     }
 
-    // Determine winner
-    let bestNet = Infinity, winnerId = null, winnerHdcp = Infinity;
+    // Determine winner — highest net (actual - hdcpBefore) wins; ties go to lower handicap
+    let bestNet = -Infinity, winnerId = null, winnerHdcp = Infinity;
     for (const s of scores) {
-      if (s.netScore < bestNet || (s.netScore === bestNet && s.hdcpBefore < winnerHdcp)) {
+      if (s.netScore > bestNet || (s.netScore === bestNet && s.hdcpBefore < winnerHdcp)) {
         bestNet = s.netScore;
         winnerId = s.playerId;
         winnerHdcp = s.hdcpBefore;
@@ -1972,7 +1973,7 @@ async function renderHistory() {
     const hasSkins = r.scores.some(s => s.skinsWon > 0);
     const hasGreeny = r.scores.some(s => s.greenyWon > 0);
     const detailRows = r.scores
-      .sort((a, b) => a.netScore - b.netScore)
+      .sort((a, b) => b.netScore - a.netScore)
       .map(s => {
         const isWinner = s.playerId === r.winnerId;
         const diff = s.hdcpAfter - s.hdcpBefore;
