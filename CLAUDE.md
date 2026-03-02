@@ -77,7 +77,7 @@ The dashboard is a single scrolling page (no tabs). All sections stack verticall
 2. **Enter Round** — White content panel. Date picker, score inputs (live handicap preview), Skins $ and Greeny $ per player, auto-determines winner on save. Only players with a score entered are updated — absent players keep their current handicap.
 3. **Round History** — Expandable round cards (newest first), delete with full recalculation. Skins/Greeny columns appear automatically if round has winnings data
 4. **Manage Players** — Add/edit/toggle active/delete players. Sub-line shows skins and greeny totals if non-zero
-5. **Settings** — Handicap reference table, payout calculator ($10 buy-in, 50/30/20 split), export/import JSON, Clear Round Data, Load Sample Data, Reset All Data
+5. **Settings** — Handicap reference table, payout calculator (configurable buy-in + 1/2/3 places; default 2 places 60/40%), skins calculator (per-hole rates or fixed pot), export/import JSON, Clear Round Data, Load Sample Data, Reset All Data
 6. **Help & FAQ** — Quick Start guide, 10 expandable FAQ items (tap to open/close), handicap rules summary. Accessible via full-width button at bottom of dashboard nav grid.
 
 ## Belt Holder / Monday Champion
@@ -94,6 +94,24 @@ The dashboard is a single scrolling page (no tabs). All sections stack verticall
 - Player totals: `skinsWinnings` and `greenyWinnings` accumulate across rounds
 - `fullRecalculate()` resets these to 0 and re-accumulates from round data
 - Dashboard shows: **Wins bar chart** (CSS flexbox, gold gradient bars) and **Winnings pie chart** (SVG, colour-coded slices with legend)
+
+## Skins Calculator (Settings tool — does not write to DB)
+
+A standalone calculator in Settings for working out hole-by-hole skins payouts before recording the total in Enter Round.
+
+**Per-hole rates mode (FWB Gaggle default):**
+- Skin (sole best score): winner collects $1 from each other player. Rate configurable.
+- Birdie (sole, par−1): winner collects $2 from each other player. Rate configurable.
+- Eagle (sole, ≤ par−2): winner collects $5 from each other player. Rate configurable.
+- Birdie tie (2+ players tied at par−1): each birdie player collects $1 consolation from each non-birdie player (zero-sum).
+- Other tie: push — skin lost (or carries to next hole if carry-over enabled).
+
+**Fixed pot mode:**
+- $ per player × N players = total pot. Pot ÷ holes = value per hole.
+- Lowest score wins the hole's value. Ties push (carry-over optional).
+- No birdie/eagle multipliers in fixed pot mode.
+
+Key functions: `renderSkinsPlayers()`, `buildSkinsTable()`, `calcSkins()`, `skinsToggleMode()`, `skinsPotUpdate()`.
 
 ## Sample Data
 
@@ -154,3 +172,5 @@ Visanu 24, Biscuit 18, Julius 22, PK 15, Todd 20, Timmy 15, Tony 14, Rich 15, Jo
 15. `DATA_VERSION` bump triggers one-time clean reset on next page load
 16. Handicap never drops below 14 regardless of score (MIN_HDCP floor enforced in calcHandicap)
 17. Help & FAQ screen accessible from dashboard; FAQ items expand/collapse on tap
+18. Skins Calculator in Settings: per-hole rates mode calculates zero-sum net winnings; fixed pot mode divides pot across won holes
+19. Payout calculator defaults to 2 places (60/40%); configurable buy-in and 1/2/3 places

@@ -104,7 +104,8 @@ Tap **Players** to:
 | Option | Description |
 |---|---|
 | **Handicap Reference** | Table mapping handicap → expected Stableford points |
-| **Payout Calculator** | Enter number of players ($10 buy-in) → shows 1st/2nd/3rd place payouts (50/30/20%) |
+| **Payout Calculator** | Configurable players, buy-in amount, and places paid (1st only / 1st & 2nd / 1st–3rd). Defaults to 2 places at 60/40% split. |
+| **Skins Calculator** | Hole-by-hole skins calculator. Two modes: **Per-hole rates** (skin $1, birdie $2, eagle $5 from each player; birdie-tie consolation $1 each) or **Fixed pot** (fixed buy-in split across holes won). Carry-over toggle (default off). |
 | **Export Data** | Downloads a full backup as `fwb-gaggle-backup-YYYY-MM-DD.json` |
 | **Import Data** | Restores from a previously exported JSON file |
 | **Clear Round Data** | Wipes all rounds and resets player stats to starting handicaps |
@@ -163,8 +164,11 @@ Tap the small ✎ pencil icon next to the champion name in the white belt bar at
 **Q: What if I enter the wrong score for a round?**
 Go to **History**, expand the round card, and tap **Delete Round**. Then re-enter the round with the correct scores. Deleting a round fully recalculates all handicaps, wins, and winnings from scratch.
 
-**Q: Can two players share the skins or greeny prize?**
-Yes — enter the dollar amount for each player individually in the Skins $ and Greeny $ fields on the Enter Round screen.
+**Q: How do skins work in the FWB Gaggle?**
+Skins are played hole by hole on stroke scores. Sole best score wins the hole: regular skin = $1 from each other player, birdie = $2 from each, eagle = $5 from each. Ties mean no winner (no carry-over by default). Birdie tie exception: each birdie player collects $1 consolation from every non-birdie player. Use the **Skins Calculator** in Settings to calculate payouts automatically, then record each player's total in the Skins $ field when entering the round.
+
+**Q: Can two players share the greeny prize?**
+Yes — enter the dollar amount for each player individually in their own Greeny $ field on the Enter Round screen.
 
 **Q: How do I back up my data?**
 Go to **Settings → Export Data**. A JSON file downloads to your device. To restore, use **Settings → Import Data** and select that file.
