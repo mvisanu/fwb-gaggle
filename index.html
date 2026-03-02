@@ -1116,7 +1116,9 @@ h1, h2, h3, .heading {
   <h2 class="section-title">Data Management</h2>
   <div class="data-section">
     <button class="btn btn-secondary btn-full" onclick="exportData()">Export Data (JSON)</button>
+    <div id="autoBackupInfo" style="font-size:0.8rem;color:var(--text-muted);margin:-4px 0 4px;text-align:center"></div>
     <button class="btn btn-secondary btn-full" onclick="requirePin(()=>document.getElementById('importFile').click())">Import Data (JSON)</button>
+    <button class="btn btn-secondary btn-full" onclick="requirePin(restoreAutoBackup)" id="restoreAutoBackupBtn" style="display:none">Restore Auto-Backup</button>
     <input type="file" id="importFile" accept=".json" onchange="importData(event)">
     <button class="btn btn-secondary btn-full" onclick="requirePin(()=>confirmClearRounds())" style="border-color:var(--red-bad);color:var(--red-bad)">Clear Round Data</button>
     <button class="btn btn-secondary btn-full" onclick="requirePin(()=>confirmSampleData())" style="border-color:var(--gold);color:var(--gold)">Load Sample Data</button>
@@ -2097,6 +2099,35 @@ function renderSettings() {
   renderSkinsPlayers();
   renderGreenyPlayers();
   renderPinSection();
+  renderAutoBackupInfo();
+}
+
+function renderAutoBackupInfo() {
+  const raw = localStorage.getItem('autoBackup');
+  const info = document.getElementById('autoBackupInfo');
+  const btn = document.getElementById('restoreAutoBackupBtn');
+  if (!raw) { if (info) info.textContent = ''; if (btn) btn.style.display = 'none'; return; }
+  try {
+    const { savedAt } = JSON.parse(raw);
+    const d = new Date(savedAt);
+    if (info) info.textContent = 'Auto-backup: ' + d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    if (btn) btn.style.display = '';
+  } catch(e) { if (info) info.textContent = ''; }
+}
+
+async function restoreAutoBackup() {
+  const raw = localStorage.getItem('autoBackup');
+  if (!raw) { toast('No auto-backup found'); return; }
+  try {
+    const { players, rounds } = JSON.parse(raw);
+    if (!players || !rounds) { toast('Invalid backup data'); return; }
+    await clearAll();
+    for (const p of players) await putPlayer(p);
+    for (const r of rounds) await putRound(r);
+    await fullRecalculate();
+    toast('Auto-backup restored ✓');
+    showScreen('screenDashboard');
+  } catch(e) { toast('Restore failed'); }
 }
 
 function calcPayout() {
@@ -2350,15 +2381,9 @@ async function autoBackup() {
   try {
     const players = await getPlayers();
     const rounds = await getRounds();
-    const blob = new Blob([JSON.stringify({ players, rounds }, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
     const d = new Date();
-    a.href = url;
-    a.download = `fwb-gaggle-backup-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  } catch(e) { /* silent — don't interrupt the user if backup fails */ }
+    localStorage.setItem('autoBackup', JSON.stringify({ players, rounds, savedAt: d.toISOString() }));
+  } catch(e) { /* silent */ }
 }
 
 async function exportData() {
