@@ -27,7 +27,7 @@ The sticky header has two tiers:
 | **Bottom** | White | `[belt] Champion: JOSH [belt]` |
 
 - The Monday belt champion is displayed between two WBC-style championship belt icons
-- Tap the **✎** pencil icon to open a player picker and change the champion manually
+- Tap the **✎** pencil icon to open a player picker (light gray modal) and change the champion manually
 - When a **Monday round** is saved, the winner automatically becomes the new belt champion
 
 ---
@@ -72,6 +72,7 @@ This is a custom society handicap — the handicap value represents expected Sta
 | Scored **above** handicap | `newHdcp = hdcp + floor((actual − hdcp) / 2)` — no cap |
 | Scored **below** handicap | `reduction = floor((hdcp − actual) / 2)`, capped at −2 per round |
 | Scored **equal** to handicap | No change |
+| **Hard floor** | Handicap can never drop below **14** |
 
 **Net score** = `actual − handicap before round` (negative is good — you beat your handicap)
 
@@ -109,6 +110,15 @@ Tap **Players** to:
 | **Clear Round Data** | Wipes all rounds and resets player stats to starting handicaps |
 | **Load Sample Data** | Loads 6 demo rounds so you can preview all charts |
 | **Reset All Data** | Wipes everything and restores the 16 default players (double-confirmed) |
+
+---
+
+## Help & FAQ (In-App)
+
+Tap the **❓ Help & FAQ** button at the bottom of the dashboard to open the in-app help screen, which includes:
+- **Quick Start** — 3-step guide to entering rounds, setting the belt champion, and backing up data
+- **10 expandable FAQ items** — tap any question to reveal the answer
+- **Handicap rules summary** — formula reference at a glance
 
 ---
 

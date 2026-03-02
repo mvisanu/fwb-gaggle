@@ -20,6 +20,7 @@ Custom society handicap where the handicap value equals expected Stableford poin
 - **Up (actual > hdcp):** `newHdcp = currentHdcp + Math.floor((actual - currentHdcp) / 2)` — no cap
 - **Down (actual < hdcp):** `reduction = Math.floor((currentHdcp - actual) / 2)`, `newHdcp = currentHdcp - Math.min(reduction, 2)` — capped at -2 per round
 - **Same:** no change
+- **Hard floor:** `MIN_HDCP = 14` — handicap can never drop below 14, enforced via `Math.max(MIN_HDCP, newHdcp)` in `calcHandicap()`
 
 Net score = `actual - hdcpBefore` (negative is good). Round winner = lowest net score; ties broken by lower handicap.
 
@@ -77,12 +78,13 @@ The dashboard is a single scrolling page (no tabs). All sections stack verticall
 3. **Round History** — Expandable round cards (newest first), delete with full recalculation. Skins/Greeny columns appear automatically if round has winnings data
 4. **Manage Players** — Add/edit/toggle active/delete players. Sub-line shows skins and greeny totals if non-zero
 5. **Settings** — Handicap reference table, payout calculator ($10 buy-in, 50/30/20 split), export/import JSON, Clear Round Data, Load Sample Data, Reset All Data
+6. **Help & FAQ** — Quick Start guide, 10 expandable FAQ items (tap to open/close), handicap rules summary. Accessible via full-width button at bottom of dashboard nav grid.
 
 ## Belt Holder / Monday Champion
 
 - Stored in `localStorage.getItem('beltHolder')`, default `"Josh"`
 - **Auto-update:** when a round is saved on a Monday, the winner becomes the new belt holder
-- **Manual update:** tap the ✎ icon in the belt bar → player picker modal → select champion → live update
+- **Manual update:** tap the ✎ icon in the belt bar → player picker modal (light gray background) → select champion → live update
 - `updateBeltHolderFromRounds(rounds)` scans Monday rounds (most recent first) and sets the belt holder — called in `fullRecalculate()`
 - `renderBeltHolder()` called after every round save (any day) to keep the display in sync
 
@@ -147,6 +149,8 @@ Visanu 24, Biscuit 18, Julius 22, PK 15, Todd 20, Timmy 15, Tony 14, Rich 15, Jo
 10. Leaderboard sorts correctly (lowest handicap = rank 1)
 11. Player with most wins is visually highlighted on dashboard; "Top Winner" stat shows most-wins player
 12. App starts clean (no sample data); sample data available via Settings → Load Sample Data
-13. Belt holder displays correctly in white header bar; ✎ icon opens champion selector modal
+13. Belt holder displays correctly in white header bar; ✎ icon opens champion selector (light gray modal)
 14. Saving a Monday round auto-updates the belt holder to the round winner
 15. `DATA_VERSION` bump triggers one-time clean reset on next page load
+16. Handicap never drops below 14 regardless of score (MIN_HDCP floor enforced in calcHandicap)
+17. Help & FAQ screen accessible from dashboard; FAQ items expand/collapse on tap
