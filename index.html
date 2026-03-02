@@ -653,6 +653,13 @@ h1, h2, h3, .heading {
 .payout-result div { padding: 4px 0; }
 
 .data-section { display: flex; flex-direction: column; gap: 10px; }
+.settings-label {
+  color: var(--text-dark);
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 4px;
+}
 #importFile { display: none; }
 
 /* --- Toast --- */
@@ -1006,15 +1013,15 @@ h1, h2, h3, .heading {
   <div class="payout-calc">
     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
       <div>
-        <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">Players</label>
+        <label class="settings-label">Players</label>
         <input type="number" inputmode="numeric" id="payoutPlayers" class="score-input" style="width:72px" value="12" min="1" oninput="calcPayout()">
       </div>
       <div>
-        <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">Buy-in ($)</label>
+        <label class="settings-label">Buy-in ($)</label>
         <input type="number" inputmode="numeric" id="payoutBuyin" class="score-input" style="width:72px" value="5" min="1" oninput="calcPayout()">
       </div>
       <div>
-        <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">Places Paid</label>
+        <label class="settings-label">Places Paid</label>
         <select id="payoutPlaces" class="date-input" style="width:130px;padding:10px 8px" onchange="calcPayout()">
           <option value="1">1st only</option>
           <option value="2" selected>1st &amp; 2nd</option>
@@ -1029,21 +1036,21 @@ h1, h2, h3, .heading {
   <div class="payout-calc">
     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
       <div>
-        <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">Game Type</label>
+        <label class="settings-label">Game Type</label>
         <select id="skinsGameType" class="date-input" style="width:160px;padding:10px 8px" onchange="skinsToggleMode()">
           <option value="rates">Per-hole rates</option>
           <option value="pot">Fixed pot</option>
         </select>
       </div>
       <div>
-        <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">Carry Over</label>
+        <label class="settings-label">Carry Over</label>
         <select id="skinsCarry" class="date-input" style="width:90px;padding:10px 8px">
           <option value="0" selected>No</option>
           <option value="1">Yes</option>
         </select>
       </div>
       <div>
-        <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">Holes</label>
+        <label class="settings-label">Holes</label>
         <select id="skinsHoles" class="date-input" style="width:80px;padding:10px 8px">
           <option value="9">9</option>
           <option value="18" selected>18</option>
@@ -1052,22 +1059,22 @@ h1, h2, h3, .heading {
     </div>
     <div id="skinsRatesConfig" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
       <div>
-        <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">Skin ($)</label>
+        <label class="settings-label">Skin ($)</label>
         <input type="number" inputmode="decimal" id="skinRate" class="score-input" style="width:64px" value="1" min="0.5" step="0.5">
       </div>
       <div>
-        <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">Birdie ($)</label>
+        <label class="settings-label">Birdie ($)</label>
         <input type="number" inputmode="decimal" id="birdieRate" class="score-input" style="width:64px" value="2" min="0.5" step="0.5">
       </div>
       <div>
-        <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">Eagle ($)</label>
+        <label class="settings-label">Eagle ($)</label>
         <input type="number" inputmode="decimal" id="eagleRate" class="score-input" style="width:64px" value="5" min="1" step="1">
       </div>
     </div>
     <div id="skinsPotConfig" style="display:none;margin-bottom:12px">
       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
         <div>
-          <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">$ Per Player</label>
+          <label class="settings-label">$ Per Player</label>
           <input type="number" inputmode="decimal" id="skinsPotBuyin" class="score-input" style="width:80px" value="10" min="1" oninput="skinsPotUpdate()">
         </div>
         <div id="skinsPotTotal" style="padding:10px 0;font-weight:700;color:var(--gold);font-size:1rem">$0 pot</div>
@@ -1083,11 +1090,11 @@ h1, h2, h3, .heading {
   <div class="payout-calc">
     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
       <div>
-        <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">$ Per Greeny</label>
+        <label class="settings-label">$ Per Greeny</label>
         <input type="number" inputmode="decimal" id="greenyRate" class="score-input" style="width:72px" value="1" min="0.5" step="0.5">
       </div>
       <div>
-        <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">Par 3 Holes</label>
+        <label class="settings-label">Par 3 Holes</label>
         <select id="greenyPar3Count" class="date-input" style="width:80px;padding:10px 8px">
           <option value="2">2</option>
           <option value="3" selected>3</option>
