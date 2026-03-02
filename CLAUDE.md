@@ -154,6 +154,8 @@ Closest-to-pin on par 3 holes. Configurable $ per greeny (default $1) and number
 
 **Protected actions** (all wrapped with `requirePin(() => action())`):
 - Nav buttons: Enter Round, Players
+- Enter Round: Save Round button (defence-in-depth)
+- Header: Belt Champion ✎ edit button (visible from all screens)
 - History: Delete Round (`confirmDeleteRound` → `requirePin` → `_confirmDeleteRound`)
 - Settings: Import Data, Clear Round Data, Load Sample Data, Reset All Data
 
