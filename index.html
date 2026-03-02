@@ -1176,6 +1176,21 @@ h1, h2, h3, .heading {
     <div class="faq-a">Go to Players, tap the ✎ edit icon next to the player, and change their current handicap. This only affects their current handicap — past round history is not changed.</div>
   </div>
 
+  <div class="faq-item">
+    <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">How does the Greeny Calculator work?<span class="faq-arrow">&#9660;</span></div>
+    <div class="faq-a">Go to Settings → Greeny Calculator. Set the $ per greeny (default $1) and number of par 3 holes. Select the players in the round, tap Build Greeny Card, then pick who was closest to the pin on each par 3. Tap Calculate Greeny to see net winnings per player. Enter the totals in the Greeny $ fields when you record the round.</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">How do I set up the PIN lock?<span class="faq-arrow">&#9660;</span></div>
+    <div class="faq-a">Go to Settings → Security → Set Up PIN. Enter a 4-digit PIN and confirm it. Once set, you'll be prompted for the PIN when tapping Enter Round, Players, deleting a round, or changing data in Settings. You only need to enter it once per session — after that, everything stays unlocked until you refresh the page.</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">I forgot my PIN — how do I reset it?<span class="faq-arrow">&#9660;</span></div>
+    <div class="faq-a">The PIN is stored locally in your browser. If you forget it, open your browser's developer tools (F12 → Console) and run: <code>localStorage.removeItem('appPin')</code> then refresh. This removes the PIN so you can set a new one in Settings → Security.</div>
+  </div>
+
   <h2 class="section-title" style="margin-top:28px">Handicap Rules</h2>
   <div class="help-intro">
     <p>The handicap value represents your expected Stableford points for a round.</p>
