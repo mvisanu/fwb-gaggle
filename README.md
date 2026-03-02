@@ -2,17 +2,33 @@
 
 A mobile-first, offline-capable web app for tracking weekly Stableford golf rounds, custom rolling handicaps, wins, skins, and greeny winnings for the FWB Gaggle group (~16 players).
 
-**No install required.** Open `index.html` directly in any browser — phone or desktop.
+**Live app:** https://mvisanu.github.io/fwb-gaggle/
 
-![Dashboard](docs/dashboard.png)
+**No install required.** Open in any browser — phone or desktop.
 
 ---
 
 ## Getting Started
 
-1. Open `index.html` in your browser (Chrome or Safari recommended on phone)
-2. Default players are pre-loaded on first launch
-3. Go to **Settings → Load Sample Data** if you want to see the charts with demo rounds before entering real data
+1. Visit https://mvisanu.github.io/fwb-gaggle/ (or open `index.html` locally)
+2. All 16 default players are pre-loaded with their starting handicaps
+3. Tap **Enter Round** to start recording scores
+4. Want to preview charts with demo data? Go to **Settings → Load Sample Data**
+
+---
+
+## Header — Championship Belt
+
+The sticky header has two tiers:
+
+| Tier | Background | Content |
+|---|---|---|
+| **Top** | Dark green | Screen title (FWB Gaggle / Enter Round / etc.) |
+| **Bottom** | White | `[belt] Champion: JOSH [belt]` |
+
+- The Monday belt champion is displayed between two WBC-style championship belt icons
+- Tap the **✎** pencil icon to open a player picker and change the champion manually
+- When a **Monday round** is saved, the winner automatically becomes the new belt champion
 
 ---
 
@@ -22,12 +38,12 @@ The home screen scrolls through all sections:
 
 | Section | What it shows |
 |---|---|
-| **Stats Banner** | Total rounds played, date of last round, current handicap leader |
+| **Stats Banner** | Total rounds played · Date of last round · Player with most wins |
 | **Leaderboard** | All active players sorted by handicap (lowest = best). Tap any column header to re-sort. Gold row = player with most wins |
 | **Wins** | Gold horizontal bar chart — one bar per player, length = total wins |
 | **Winnings** | Colour-coded pie chart showing each player's share of total skins + greeny dollars |
 | **Win Leaderboard** | Ranked by wins with win percentage |
-| **Form Guide** | Last 10 rounds as coloured dots per player — green = handicap dropped, red = went up, grey = no change |
+| **Form Guide** | Last 10 rounds as coloured dots — green = handicap dropped, red = went up, grey = no change |
 
 ---
 
@@ -37,11 +53,13 @@ The home screen scrolls through all sections:
 2. Select the date (defaults to today)
 3. For each player who played, enter their total **Stableford points**
    - A live preview shows their new handicap and net score as you type
-4. Optionally enter **Skins $** and/or **Greeny $** for any player who won money that round
+   - Players left blank are skipped — their handicap stays unchanged
+4. Optionally enter **Skins $** and/or **Greeny $** for any player who won money
 5. Tap **Save Round**
    - The winner (lowest net score) is auto-determined
-   - Handicaps update immediately
-   - Skins/greeny dollars are added to each player's running total
+   - Handicaps update immediately for players who played
+   - If the round date is a **Monday**, the winner becomes the new belt champion
+   - The dashboard refreshes automatically
 
 ---
 
@@ -66,7 +84,7 @@ This is a custom society handicap — the handicap value represents expected Sta
 - Tap **History** to see all rounds, newest first
 - Tap a round card to expand it and see every player's score, net, and handicap change
 - Rounds with skins or greeny winnings show those columns automatically
-- **Delete a round** — all subsequent handicaps and win counts are fully recalculated from scratch
+- **Delete a round** — all subsequent handicaps, win counts, and winnings are fully recalculated from scratch
 
 ---
 
@@ -88,6 +106,7 @@ Tap **Players** to:
 | **Payout Calculator** | Enter number of players ($10 buy-in) → shows 1st/2nd/3rd place payouts (50/30/20%) |
 | **Export Data** | Downloads a full backup as `fwb-gaggle-backup-YYYY-MM-DD.json` |
 | **Import Data** | Restores from a previously exported JSON file |
+| **Clear Round Data** | Wipes all rounds and resets player stats to starting handicaps |
 | **Load Sample Data** | Loads 6 demo rounds so you can preview all charts |
 | **Reset All Data** | Wipes everything and restores the 16 default players (double-confirmed) |
 
@@ -112,5 +131,8 @@ Tap **Players** to:
 
 - **Single file** — everything is in `index.html` (HTML, CSS, JS). No server, no build tools.
 - **Storage** — IndexedDB (primary) with localStorage fallback. Data persists across browser sessions.
+- **Belt champion** — stored in `localStorage` key `beltHolder`. Defaults to `"Josh"`.
+- **Data versioning** — a `DATA_VERSION` constant triggers a one-time clean reset when bumped on deploy.
 - **Offline** — fully functional without internet after first load. Only Google Fonts requires a connection (degrades gracefully).
-- **Mobile** — designed for 375px phone screens. All tap targets are 44px minimum.
+- **Mobile** — designed for 375px phone screens. All tap targets are 44px minimum. Light gray input boxes, white screens throughout.
+- **Deployed** — GitHub Pages at https://mvisanu.github.io/fwb-gaggle/ (auto-deploys on push to `master`)

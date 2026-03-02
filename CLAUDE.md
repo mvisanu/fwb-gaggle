@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**FWB Gaggle — Stableford Handicap Tracker:** A mobile-first, offline-capable single-page web app for a golf group (~16 players). Tracks weekly Stableford rounds, custom rolling handicaps, wins, skins/greeny winnings, and trends.
+**FWB Gaggle — Stableford Handicap Tracker:** A mobile-first, offline-capable single-page web app for a golf group (~16 players). Tracks weekly Stableford rounds, custom rolling handicaps, wins, skins/greeny winnings, and trends. Hosted on GitHub Pages at https://mvisanu.github.io/fwb-gaggle/
 
 ## Architecture
 
@@ -56,19 +56,35 @@ Net score = `actual - hdcpBefore` (negative is good). Round winner = lowest net 
 }
 ```
 
+localStorage keys (outside IndexedDB):
+- `beltHolder` — name of the current Monday belt champion (default: `"Josh"`)
+- `dataVersion` — used for one-time migrations (current: `"v2-clean"`)
+
 ## Round Deletion & Recalculation
 
-Deleting a round requires full recalculation: reset all players to `startingHdcp`, `wins=0`, `skinsWinnings=0`, `greenyWinnings=0`, replay every remaining round chronologically, recompute all handicaps, win counts, and winnings from scratch.
+Deleting a round requires full recalculation: reset all players to `startingHdcp`, `wins=0`, `skinsWinnings=0`, `greenyWinnings=0`, replay every remaining round chronologically, recompute all handicaps, win counts, and winnings from scratch. `updateBeltHolderFromRounds()` is also called to sync the belt holder from Monday rounds.
 
 ## App Screens
 
+The header is sticky and split into two tiers:
+1. **Green tier** — back button, screen title ("FWB Gaggle" on dashboard)
+2. **White tier** — Championship belt bar: WBC-style belt SVG icons flanking "Champion: [Name]". Tap the ✎ pencil to open a player selector modal and change the champion.
+
 The dashboard is a single scrolling page (no tabs). All sections stack vertically.
 
-1. **Dashboard** — Stats banner → Leaderboard → Wins bar chart → Winnings pie chart → Win Leaderboard → Form Guide → Nav buttons
-2. **Enter Round** — White content panel. Date picker, score inputs (live handicap preview), Skins $ and Greeny $ per player, auto-determines winner on save
+1. **Dashboard** — Stats banner (Rounds / Last Round / Top Winner) → Leaderboard → Wins bar chart → Winnings pie chart → Win Leaderboard → Form Guide → Nav buttons
+2. **Enter Round** — White content panel. Date picker, score inputs (live handicap preview), Skins $ and Greeny $ per player, auto-determines winner on save. Only players with a score entered are updated — absent players keep their current handicap.
 3. **Round History** — Expandable round cards (newest first), delete with full recalculation. Skins/Greeny columns appear automatically if round has winnings data
 4. **Manage Players** — Add/edit/toggle active/delete players. Sub-line shows skins and greeny totals if non-zero
 5. **Settings** — Handicap reference table, payout calculator ($10 buy-in, 50/30/20 split), export/import JSON, Clear Round Data, Load Sample Data, Reset All Data
+
+## Belt Holder / Monday Champion
+
+- Stored in `localStorage.getItem('beltHolder')`, default `"Josh"`
+- **Auto-update:** when a round is saved on a Monday, the winner becomes the new belt holder
+- **Manual update:** tap the ✎ icon in the belt bar → player picker modal → select champion → live update
+- `updateBeltHolderFromRounds(rounds)` scans Monday rounds (most recent first) and sets the belt holder — called in `fullRecalculate()`
+- `renderBeltHolder()` called after every round save (any day) to keep the display in sync
 
 ## Skins & Greeny Tracking
 
@@ -79,16 +95,27 @@ The dashboard is a single scrolling page (no tabs). All sections stack verticall
 
 ## Sample Data
 
-- Auto-loaded on first launch if no rounds exist (`init()` calls `doSeedSampleData()` when rounds are empty)
-- 6 rounds (Jan–Feb 2026) with realistic Stableford scores and skins/greeny amounts
-- Settings buttons: **Clear Round Data** (wipes rounds, resets player stats) and **Load Sample Data** (reloads demo rounds)
+- **Not auto-loaded** on first launch. App starts clean with default players and no rounds.
+- Available via Settings → **Load Sample Data** (6 rounds, Jan–Feb 2026, with skins/greeny amounts)
+- Settings buttons: **Clear Round Data** (wipes rounds, resets player stats to `startingHdcp`) and **Reset All Data** (full wipe, reseeds 16 default players)
+
+## Data Versioning
+
+`DATA_VERSION = 'v2-clean'` in `init()`. On first load after a deploy that bumps this value, the app:
+1. Clears all IndexedDB data (`clearAll()`)
+2. Sets `beltHolder` to `"Josh"` in localStorage
+3. Stores the new version key so the reset only fires once
+4. Seeds default players and renders a clean dashboard
+
+To trigger a one-time reset on next deploy, bump `DATA_VERSION` to a new string.
 
 ## Design Tokens
 
 - Dark green theme: primary `#1a472a`, deep `#0d2818`
 - Gold accent: `#d4af37`, gold-dark: `#b8960c`, cream: `#f5f0e1`
-- Handicap down (good): `#4ade80`, handicap up (bad): `#e8443a`
-- White content panels: `--white: #ffffff`, stripe: `--row-stripe: #f1f5f9`
+- Handicap down (good): `#4ade80` / `#16a34a` (on light), handicap up (bad): `#e8443a` / `#dc2626`
+- **White body background:** `--white: #ffffff` — all screens, inputs, history cards use white/light-gray
+- Input background: `--row-stripe: #f1f5f9` (light gray for all input boxes)
 - 44px minimum tap targets, 18px+ input font size
 - Google Fonts: Bebas Neue (headings), Barlow (body)
 - Screen transitions: fade ~300ms
@@ -99,7 +126,8 @@ The dashboard is a single scrolling page (no tabs). All sections stack verticall
 - `inputmode="numeric"` on score inputs, `inputmode="decimal"` on money inputs
 - Prevent double-submit on Save Round (`savingRound` flag)
 - All data export as `fwb-gaggle-backup-YYYY-MM-DD.json`
-- Enter Round screen wrapped in `.content-panel` (white background); CSS overrides handle input colours on white
+- White screens with light-gray inputs; `.content-panel` overrides kept for backward compat but base styles now handle light theme
+- Belt bar is outside `.app-header-inner` — it is a sibling div inside `<header>` with white background and gold top border
 
 ## Default Players (preloaded on first launch)
 
@@ -108,7 +136,7 @@ Visanu 24, Biscuit 18, Julius 22, PK 15, Todd 20, Timmy 15, Tony 14, Rich 15, Jo
 ## QA Checklist (verify before finishing)
 
 1. All 8 handicap examples from the verification table produce correct results
-2. Entering a round with some blanks only saves players with scores
+2. Entering a round with some blanks only saves players with scores; absent players keep their handicap
 3. Round winner is correctly identified (lowest net score, tiebreak = lower handicap)
 4. Win counts and skins/greeny accumulate correctly across multiple rounds
 5. Deleting a middle round recalculates all later handicaps, win counts, AND winnings correctly
@@ -117,5 +145,8 @@ Visanu 24, Biscuit 18, Julius 22, PK 15, Todd 20, Timmy 15, Tony 14, Rich 15, Jo
 8. Reset clears everything, reloads default 16 players with 0 wins/winnings
 9. Number inputs show numeric keyboard on mobile
 10. Leaderboard sorts correctly (lowest handicap = rank 1)
-11. Player with most wins is visually highlighted on dashboard
-12. Sample data auto-loads on first launch; bar chart and pie chart render correctly
+11. Player with most wins is visually highlighted on dashboard; "Top Winner" stat shows most-wins player
+12. App starts clean (no sample data); sample data available via Settings → Load Sample Data
+13. Belt holder displays correctly in white header bar; ✎ icon opens champion selector modal
+14. Saving a Monday round auto-updates the belt holder to the round winner
+15. `DATA_VERSION` bump triggers one-time clean reset on next page load
