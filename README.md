@@ -1,6 +1,6 @@
 # FWB Gaggle — Stableford Handicap Tracker
 
-A mobile-first, offline-capable web app for tracking weekly Stableford golf rounds, custom rolling handicaps, wins, skins, and greeny winnings for the FWB Gaggle group (~16 players).
+A mobile-first, offline-capable web app for tracking weekly Stableford golf rounds, custom rolling handicaps, wins, skins, and greeny winnings. Supports multiple independent groups from a single deployment.
 
 **Live app:** https://mvisanu.github.io/fwb-gaggle/
 
@@ -10,10 +10,30 @@ A mobile-first, offline-capable web app for tracking weekly Stableford golf roun
 
 ## Getting Started
 
-1. Visit https://mvisanu.github.io/fwb-gaggle/ (or open `index.html` locally)
+1. Visit your group's URL (e.g. `https://mvisanu.github.io/fwb-gaggle/?group=monday`)
 2. All 16 default players are pre-loaded with their starting handicaps
 3. Tap **Enter Round** to start recording scores
 4. Want to preview charts with demo data? Go to **Settings → Load Sample Data**
+
+---
+
+## Multiple Groups
+
+Each group gets its own fully isolated data by adding `?group=<name>` to the URL. Any name works.
+
+| URL | Group |
+|---|---|
+| `...?group=monday` | Monday Gaggle |
+| `...?group=saturday` | Saturday Gaggle |
+| `...?group=tigers` | Tigers Gaggle |
+| `...?admin=1` | **Admin view** — see all groups |
+
+- Each group's data (players, rounds, handicaps, winnings) is completely separate
+- Groups cannot see each other's data
+- Every group self-registers on first load — they appear automatically in the admin view
+- The default URL with no `?group=` param uses `monday` data (backward compatible)
+
+**Admin view** (`?admin=1`) shows all registered groups with player count, round count, and last round date. Tap any group card to open it.
 
 ---
 
@@ -144,7 +164,8 @@ Tap the **❓ Help & FAQ** button at the bottom of the dashboard to open the in-
 
 - **Single file** — everything is in `index.html` (HTML, CSS, JS). No server, no build tools.
 - **Storage** — IndexedDB (primary) with localStorage fallback. Data persists across browser sessions.
-- **Belt champion** — stored in `localStorage` key `beltHolder`. Defaults to `"Josh"`.
+- **Multi-group** — `?group=<name>` in URL isolates all data per group. Monday uses original key names for backward compatibility. Admin view at `?admin=1`.
+- **Belt champion** — stored in `localStorage` key `beltHolder` (or `<group>-beltHolder`). Defaults to `"Josh"`.
 - **Data versioning** — a `DATA_VERSION` constant triggers a one-time clean reset when bumped on deploy.
 - **Offline** — fully functional without internet after first load. Only Google Fonts requires a connection (degrades gracefully).
 - **Mobile** — designed for 375px phone screens. All tap targets are 44px minimum. Light gray input boxes, white screens throughout. Native pinch-zoom enabled.
@@ -179,6 +200,12 @@ A backup downloads automatically every time a round is saved — no action neede
 
 **Q: Can I use the app on multiple phones?**
 Data is stored locally on each device (IndexedDB). To share data between devices, export from one and import on the other. There is no cloud sync.
+
+**Q: How do I set up a second group?**
+Just visit the app URL with a different `?group=` parameter, e.g. `?group=saturday`. The new group starts fresh with default players and no rounds. It automatically appears in the admin view at `?admin=1`.
+
+**Q: How do I view all groups as admin?**
+Open `https://mvisanu.github.io/fwb-gaggle/?admin=1`. This shows all registered groups with their player count, round count, and last round date. Tap any group card to open it.
 
 **Q: How do I add a new player mid-season?**
 Go to **Players → + Add Player**, enter their name and a starting handicap. They'll appear in the score entry list from the next round onward.

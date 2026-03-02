@@ -58,8 +58,12 @@ Net score = `actual - hdcpBefore` (negative is good). Round winner = lowest net 
 ```
 
 localStorage keys (outside IndexedDB):
-- `beltHolder` — name of the current Monday belt champion (default: `"Josh"`)
-- `dataVersion` — used for one-time migrations (current: `"v2-clean"`)
+- `beltHolder` / `<group>-beltHolder` — current belt champion per group (default: `"Josh"`)
+- `dataVersion` / `<group>-dataVersion` — one-time migration key per group (current: `"v2-clean"`)
+- `autoBackup` / `<group>-autoBackup` — silent backup JSON written after every round save
+- `knownGroups` — shared JSON array of all registered group names (used by admin view)
+- `appPin` — shared device-level PIN (not namespaced)
+- `zoomSize` — shared device-level zoom preference (not namespaced)
 
 ## Round Deletion & Recalculation
 
@@ -118,6 +122,21 @@ Key functions: `renderSkinsPlayers()`, `buildSkinsTable()`, `calcSkins()`, `skin
 - **Not auto-loaded** on first launch. App starts clean with default players and no rounds.
 - Available via Settings → **Load Sample Data** (6 rounds, Jan–Feb 2026, with skins/greeny amounts)
 - Settings buttons: **Clear Round Data** (wipes rounds, resets player stats to `startingHdcp`) and **Reset All Data** (full wipe, reseeds 16 default players)
+
+## Multi-Group Support
+
+Each group is isolated by the `?group=<name>` URL parameter. Any name works — not limited to days of the week.
+
+- `GROUP` constant read from `new URLSearchParams(window.location.search).get('group') || 'monday'`
+- `GROUP_LABEL` = capitalised group name + " Gaggle" (shown in header)
+- `DB_NAME`: `'fwbGaggle'` for monday (backward compat), `'fwbGaggle-<group>'` for all others
+- `lsKey(name)` helper: returns `name` for monday, `'<group>-name'` for others
+- All group-specific localStorage keys go through `lsKey()`: `beltHolder`, `dataVersion`, `autoBackup`, `fwb_players`, `fwb_rounds`
+- Shared (no prefix): `appPin`, `zoomSize`, `knownGroups`
+- `registerGroup()` called in `init()` — adds group name to `knownGroups` array in localStorage
+- **Admin view**: `?admin=1` in URL — skips normal init, hides belt bar, shows `screenAdmin`
+  - `renderAdmin()` opens each known group's IndexedDB read-only to get player/round counts
+  - Tap any group card → navigates to `?group=<name>`
 
 ## Data Versioning
 
