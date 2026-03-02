@@ -1862,6 +1862,7 @@ async function saveRound() {
     renderBeltHolder();
     toast('Round saved! Winner: ' + (winnerPlayer ? winnerPlayer.name : '?') + ' &#127942;');
     showScreen('screenDashboard');
+    autoBackup();
   } finally {
     savingRound = false;
     document.getElementById('saveRoundBtn').disabled = false;
@@ -2343,6 +2344,21 @@ function calcGreeny() {
   });
   html += '</div>';
   document.getElementById('greenyResults').innerHTML = html;
+}
+
+async function autoBackup() {
+  try {
+    const players = await getPlayers();
+    const rounds = await getRounds();
+    const blob = new Blob([JSON.stringify({ players, rounds }, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const d = new Date();
+    a.href = url;
+    a.download = `fwb-gaggle-backup-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) { /* silent — don't interrupt the user if backup fails */ }
 }
 
 async function exportData() {
