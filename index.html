@@ -3096,6 +3096,9 @@ async function init() {
   // Register this group for admin discovery
   registerGroup();
 
+  // Set default group access PIN (1234) on first load if none exists
+  if (!getGroupAccessPin()) setGroupAccessPin('1234');
+
   // One-time reset when DATA_VERSION changes — clears to default players, no rounds
   if (localStorage.getItem(lsKey('dataVersion')) !== DATA_VERSION) {
     await clearAll();
