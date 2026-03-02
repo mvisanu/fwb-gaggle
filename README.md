@@ -10,7 +10,7 @@ A mobile-first, offline-capable web app for tracking weekly Stableford golf roun
 
 ## Getting Started
 
-1. Visit your group's URL (e.g. `https://mvisanu.github.io/fwb-gaggle/?group=monday`)
+1. Visit your group's URL (e.g. `https://mvisanu.github.io/fwb-gaggle/?group=a3f8b2c9d4e6f1a2`) — get this from the admin who created the group
 2. All 16 default players are pre-loaded with their starting handicaps
 3. Tap **Enter Round** to start recording scores
 4. Want to preview charts with demo data? Go to **Settings → Load Sample Data**
@@ -19,21 +19,20 @@ A mobile-first, offline-capable web app for tracking weekly Stableford golf roun
 
 ## Multiple Groups
 
-Each group gets its own fully isolated data by adding `?group=<name>` to the URL. Any name works.
+Each group gets its own fully isolated data. Groups are identified by a random 64-bit key in the URL — **the URL is the access control**. Anyone with the link can view; the Editor PIN is required to make changes.
 
-| URL | Group |
+| URL | Description |
 |---|---|
-| `...?group=monday` | Monday Gaggle |
-| `...?group=saturday` | Saturday Gaggle |
-| `...?group=tigers` | Tigers Gaggle |
-| `...?admin=1` | **Admin view** — see all groups |
+| `...?group=a3f8b2c9d4e6f1a2` | A group with a random key |
+| `...?group=monday` | Legacy Monday group (backward compatible) |
+| `...?admin=1` | **Admin view** — see all groups, create new ones |
 
 - Each group's data (players, rounds, handicaps, winnings) is completely separate
 - Groups cannot see each other's data
 - Every group self-registers on first load — they appear automatically in the admin view
 - The default URL with no `?group=` param uses `monday` data (backward compatible)
 
-**Admin view** (`?admin=1`) shows all registered groups with player count, round count, and last round date. Tap any group card to open it.
+**Admin view** (`?admin=1`) shows all registered groups with player count, round count, and last round date. Tap any group card to open it. Use **+ Create New Group** to generate a new random-key group — enter the group's name, and the app creates the URL and navigates to it automatically.
 
 ---
 
@@ -127,7 +126,7 @@ Tap **Players** to:
 | **Payout Calculator** | Configurable players, buy-in amount, and places paid (1st only / 1st & 2nd / 1st–3rd). Defaults to 2 places at 60/40% split. |
 | **Skins Calculator** | Hole-by-hole skins calculator. Two modes: **Per-hole rates** (skin $1, birdie $2, eagle $5 from each player; birdie-tie consolation $1 each) or **Fixed pot** (fixed buy-in split across holes won). Carry-over toggle (default off). |
 | **Greeny Calculator** | Closest-to-pin on par 3s. Configurable $ per greeny (default $1). Select players, pick winner per par 3, shows net winnings. |
-| **Security** | Set a 4-digit PIN to protect data entry. Ask once per session — entering the PIN unlocks all protected actions until page refresh. Protected: Enter Round, Save Round, Players, Belt Champion ✎, Delete Round, Import/Clear/Reset/Load Sample Data. |
+| **Security** | **Editor PIN** — 4-digit PIN protecting all data entry actions (default: `2026`). Per-group. Ask once per session — entering it unlocks all protected actions until page refresh. Protected: Enter Round, Save Round, Players, Belt Champion ✎, Delete Round, Import/Clear/Reset/Load Sample Data. The global **Admin PIN** (set in the admin view) also accepts in place of the Editor PIN. |
 | **Export Data** | Downloads a full backup as `fwb-gaggle-backup-YYYY-MM-DD.json`. Also triggers automatically after every round save. |
 | **Import Data** | Restores from a previously exported JSON file (PIN protected) |
 | **Clear Round Data** | Wipes all rounds and resets player stats to starting handicaps (PIN protected) |
@@ -164,7 +163,7 @@ Tap the **❓ Help & FAQ** button at the bottom of the dashboard to open the in-
 
 - **Single file** — everything is in `index.html` (HTML, CSS, JS). No server, no build tools.
 - **Storage** — IndexedDB (primary) with localStorage fallback. Data persists across browser sessions.
-- **Multi-group** — `?group=<name>` in URL isolates all data per group. Monday uses original key names for backward compatibility. Admin view at `?admin=1`.
+- **Multi-group** — `?group=<key>` in URL isolates all data per group. Key is a 16-char random hex string — the URL itself controls view access. Create groups via admin view (`?admin=1`). Monday uses original key names for backward compatibility.
 - **Belt champion** — stored in `localStorage` key `beltHolder` (or `<group>-beltHolder`). Defaults to `"Josh"`.
 - **Data versioning** — a `DATA_VERSION` constant triggers a one-time clean reset when bumped on deploy.
 - **Offline** — fully functional without internet after first load. Only Google Fonts requires a connection (degrades gracefully).
@@ -202,7 +201,7 @@ A backup downloads automatically every time a round is saved — no action neede
 Data is stored locally on each device (IndexedDB). To share data between devices, export from one and import on the other. There is no cloud sync.
 
 **Q: How do I set up a second group?**
-Just visit the app URL with a different `?group=` parameter, e.g. `?group=saturday`. The new group starts fresh with default players and no rounds. It automatically appears in the admin view at `?admin=1`.
+Go to the admin view at `?admin=1` and tap **+ Create New Group**. Enter the group's name (e.g. "Saturday") — the app generates a random URL key, creates the group, and navigates to it. Share that URL with the group members. The group starts fresh with default players and no rounds.
 
 **Q: How do I view all groups as admin?**
 Open `https://mvisanu.github.io/fwb-gaggle/?admin=1`. This shows all registered groups with their player count, round count, and last round date. Tap any group card to open it.

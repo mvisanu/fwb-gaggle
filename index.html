@@ -1127,8 +1127,7 @@ h1, h2, h3, .heading {
   </div>
 
   <h2 class="section-title">Security</h2>
-  <div class="payout-calc" id="pinSection" style="margin-bottom:10px"></div>
-  <div class="payout-calc" id="groupAccessPinSection"></div>
+  <div class="payout-calc" id="pinSection"></div>
 
   <h2 class="section-title">Data Management</h2>
   <div class="data-section">
@@ -1261,7 +1260,7 @@ h1, h2, h3, .heading {
 // ========================================
 // Multi-group support: ?group=monday (default) | ?group=saturday | etc.
 const GROUP = (new URLSearchParams(window.location.search).get('group') || 'monday').toLowerCase();
-const GROUP_LABEL = GROUP.charAt(0).toUpperCase() + GROUP.slice(1) + ' Gaggle';
+const GROUP_LABEL = localStorage.getItem('groupLabel-' + GROUP) || (GROUP.charAt(0).toUpperCase() + GROUP.slice(1) + ' Gaggle');
 // monday uses original key names for backward compatibility; other groups use prefixed keys
 const DB_NAME = GROUP === 'monday' ? 'fwbGaggle' : 'fwbGaggle-' + GROUP;
 function lsKey(name) { return GROUP === 'monday' ? name : GROUP + '-' + name; }
@@ -2132,7 +2131,6 @@ function renderSettings() {
   renderSkinsPlayers();
   renderGreenyPlayers();
   renderPinSection();
-  renderGroupAccessPinSection();
   renderAutoBackupInfo();
 }
 
@@ -2149,58 +2147,61 @@ function registerGroup() {
   } catch(e) {}
 }
 
+function generateGroupKey() {
+  const arr = new Uint8Array(8);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function adminCreateGroup() {
+  const name = prompt('Group name (e.g. "Monday"):');
+  if (!name || !name.trim()) return;
+  const key = generateGroupKey();
+  const label = name.trim() + ' Gaggle';
+  localStorage.setItem('groupLabel-' + key, label);
+  const groups = JSON.parse(localStorage.getItem('knownGroups') || '[]');
+  if (!groups.includes(key)) { groups.push(key); localStorage.setItem('knownGroups', JSON.stringify(groups)); }
+  window.location.href = window.location.pathname + '?group=' + key;
+}
+
 async function renderAdmin() {
   const groups = JSON.parse(localStorage.getItem('knownGroups') || '[]');
   const div = document.getElementById('adminGroupList');
   if (groups.length === 0) {
-    div.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:24px">No groups registered yet.<br>Each group registers itself on first load.</div>';
-    return;
-  }
-  const items = await Promise.all(groups.map(async g => {
-    const dbName = g === 'monday' ? 'fwbGaggle' : 'fwbGaggle-' + g;
-    const lk = n => g === 'monday' ? n : g + '-' + n;
-    let players = 0, rounds = 0, lastDate = '—';
-    try {
-      await new Promise((res, rej) => {
-        const r = indexedDB.open(dbName, 1);
-        r.onsuccess = e => {
-          const d = e.target.result;
-          const tx = d.transaction(['players','rounds'], 'readonly');
-          tx.objectStore('players').count().onsuccess = pe => { players = pe.target.result; };
-          tx.objectStore('rounds').getAll().onsuccess = re => {
-            const rs = re.target.result || [];
-            rounds = rs.length;
-            if (rs.length) lastDate = rs.sort((a,b) => b.date.localeCompare(a.date))[0].date;
-            d.close(); res();
+    div.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:24px">No groups yet. Create one below.</div>';
+  } else {
+    const items = await Promise.all(groups.map(async g => {
+      const dbName = g === 'monday' ? 'fwbGaggle' : 'fwbGaggle-' + g;
+      let players = 0, rounds = 0, lastDate = '—';
+      try {
+        await new Promise((res, rej) => {
+          const r = indexedDB.open(dbName, 1);
+          r.onsuccess = e => {
+            const d = e.target.result;
+            const tx = d.transaction(['players','rounds'], 'readonly');
+            tx.objectStore('players').count().onsuccess = pe => { players = pe.target.result; };
+            tx.objectStore('rounds').getAll().onsuccess = re => {
+              const rs = re.target.result || [];
+              rounds = rs.length;
+              if (rs.length) lastDate = rs.sort((a,b) => b.date.localeCompare(a.date))[0].date;
+              d.close(); res();
+            };
+            tx.onerror = rej;
           };
-          tx.onerror = rej;
-        };
-        r.onerror = rej;
-      });
-    } catch(e) {}
-    const label = g.charAt(0).toUpperCase() + g.slice(1) + ' Gaggle';
-    const url = window.location.pathname + '?group=' + g;
-    const groupPinKey = g === 'monday' ? 'accessPin' : g + '-accessPin';
-    const hasPin = !!localStorage.getItem(groupPinKey);
-    return `<div style="margin-bottom:10px">
-      <div class="group-card" style="margin-bottom:0;border-radius:12px 12px ${hasPin ? '0 0' : '12px 12px'}" onclick="window.location.href='${url}'">
+          r.onerror = rej;
+        });
+      } catch(e) {}
+      const label = localStorage.getItem('groupLabel-' + g) || (g.charAt(0).toUpperCase() + g.slice(1) + ' Gaggle');
+      const url = window.location.pathname + '?group=' + g;
+      return `<div class="group-card" style="margin-bottom:10px" onclick="window.location.href='${url}'">
         <div><div class="group-card-name">${label}</div>
         <div class="group-card-meta">${players} players · ${rounds} rounds · Last: ${lastDate}</div></div>
         <span class="group-card-arrow">›</span>
-      </div>
-      ${hasPin ? `<div style="background:#1a3a22;border-radius:0 0 12px 12px;padding:8px 16px;display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:0.8rem;color:#d4af37">🔒 Access PIN set</span>
-        <button onclick="adminResetGroupPin('${g}','${groupPinKey}')" style="background:none;border:1px solid #e8443a;border-radius:8px;color:#e8443a;font-size:0.78rem;padding:4px 10px;cursor:pointer">Reset PIN</button>
-      </div>` : `<div style="background:#1a3a22;border-radius:0 0 12px 12px;padding:8px 16px">
-        <span style="font-size:0.8rem;color:var(--text-muted)">No access PIN</span>
-      </div>`}
-    </div>`;
-  }));
-  div.innerHTML = items.join('') +
-    `<div style="margin-top:20px;font-size:0.8rem;color:var(--text-muted);text-align:center">
-      Tap any group to open it. Add a new group by visiting<br>
-      <code style="font-size:0.78rem">${window.location.pathname}?group=<em>groupname</em></code>
-    </div>`;
+      </div>`;
+    }));
+    div.innerHTML = items.join('');
+  }
+  div.innerHTML += `<button class="btn btn-secondary btn-full" style="margin-top:12px" onclick="adminCreateGroup()">+ Create New Group</button>`;
   renderAdminPinSection();
 }
 
@@ -2684,152 +2685,11 @@ async function doReset() {
 }
 
 // ========================================
-// GROUP ACCESS LOCK
+// ADMIN PIN
 // ========================================
-let _accessPinEntered = '';
-let _accessResolve = null;
-
-function getGroupAccessPin() { return localStorage.getItem(lsKey('accessPin')) || ''; }
-function setGroupAccessPin(pin) { localStorage.setItem(lsKey('accessPin'), pin); }
-function removeGroupAccessPin() { localStorage.removeItem(lsKey('accessPin')); }
 function getAdminPin() { return localStorage.getItem('adminPin') || ''; }
 function setAdminPin(pin) { localStorage.setItem('adminPin', pin); }
 function removeAdminPin() { localStorage.removeItem('adminPin'); }
-
-async function checkGroupAccess() {
-  if (!getGroupAccessPin()) return;
-  if (sessionStorage.getItem('accessGranted-' + GROUP) === '1') return;
-  return new Promise(resolve => {
-    _accessResolve = resolve;
-    _showAccessLock();
-  });
-}
-
-function _showAccessLock() {
-  _accessPinEntered = '';
-  const overlay = document.createElement('div');
-  overlay.id = 'accessLockOverlay';
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#0d2818;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:4px';
-  overlay.innerHTML = `
-    <div style="font-family:\'Bebas Neue\',sans-serif;font-size:2rem;color:#d4af37;letter-spacing:3px;text-align:center">${GROUP_LABEL}</div>
-    <div style="color:#f5f0e1;font-size:0.95rem;margin-bottom:12px;text-align:center">🔒 Enter access PIN to continue</div>
-    <div id="accessPinDots" style="text-align:center;font-size:1.8rem;letter-spacing:16px;margin-bottom:6px">○○○○</div>
-    <div id="accessPinError" style="color:#e8443a;text-align:center;min-height:20px;margin-bottom:8px;font-size:0.88rem"></div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:220px">
-      ${[1,2,3,4,5,6,7,8,9].map(d=>`<button onclick="accessPinKey(${d})" style="background:#1a472a;border:1px solid rgba(255,255,255,0.2);border-radius:12px;color:#f5f0e1;font-size:1.2rem;font-weight:700;padding:14px 0;cursor:pointer;-webkit-tap-highlight-color:transparent">${d}</button>`).join('')}
-      <div></div>
-      <button onclick="accessPinKey(0)" style="background:#1a472a;border:1px solid rgba(255,255,255,0.2);border-radius:12px;color:#f5f0e1;font-size:1.2rem;font-weight:700;padding:14px 0;cursor:pointer;-webkit-tap-highlight-color:transparent">0</button>
-      <button onclick="accessPinKey('del')" style="background:#1a472a;border:1px solid rgba(255,255,255,0.2);border-radius:12px;color:#f5f0e1;font-size:1.1rem;padding:14px 0;cursor:pointer;-webkit-tap-highlight-color:transparent">⌫</button>
-    </div>`;
-  document.body.appendChild(overlay);
-}
-
-function _updateAccessDots() {
-  const el = document.getElementById('accessPinDots');
-  if (el) el.textContent = '●'.repeat(_accessPinEntered.length) + '○'.repeat(4 - _accessPinEntered.length);
-}
-
-function accessPinKey(key) {
-  if (key === 'del') { _accessPinEntered = _accessPinEntered.slice(0,-1); _updateAccessDots(); return; }
-  if (_accessPinEntered.length >= 4) return;
-  _accessPinEntered += key;
-  _updateAccessDots();
-  if (_accessPinEntered.length === 4) {
-    const entered = _accessPinEntered;
-    setTimeout(() => {
-      const groupPin = getGroupAccessPin();
-      const adminPin = getAdminPin();
-      if ((groupPin && entered === groupPin) || (adminPin && entered === adminPin)) {
-        sessionStorage.setItem('accessGranted-' + GROUP, '1');
-        const overlay = document.getElementById('accessLockOverlay');
-        if (overlay) overlay.remove();
-        if (_accessResolve) { _accessResolve(); _accessResolve = null; }
-      } else {
-        _accessPinEntered = '';
-        _updateAccessDots();
-        const err = document.getElementById('accessPinError');
-        if (err) { err.textContent = 'Incorrect PIN'; setTimeout(() => { err.textContent = ''; }, 1500); }
-      }
-    }, 150);
-  }
-}
-
-function renderGroupAccessPinSection() {
-  const el = document.getElementById('groupAccessPinSection');
-  if (!el) return;
-  const pin = getGroupAccessPin();
-  const label = '<div style="font-size:0.8rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Group Access PIN</div>';
-  if (pin) {
-    el.innerHTML = label +
-      `<div style="font-size:0.9rem;color:var(--text-muted);margin-bottom:12px">Access PIN is set — visitors must enter it to view this group.</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn btn-secondary" onclick="changeGroupAccessPin()">Change Access PIN</button>
-        <button class="btn btn-secondary" style="border-color:var(--red-bad);color:var(--red-bad)" onclick="confirmRemoveGroupAccessPin()">Remove Access PIN</button>
-      </div>`;
-  } else {
-    el.innerHTML = label +
-      `<div style="font-size:0.9rem;color:var(--text-muted);margin-bottom:12px">No access PIN — anyone with the URL can view this group.</div>
-      <button class="btn btn-secondary" onclick="setupGroupAccessPin()">Set Group Access PIN</button>`;
-  }
-}
-
-function _groupPinFlow(title, onSuccess) {
-  let first = '';
-  _pinEntered = '';
-  _pinOnComplete = null;
-  _showPinPad(title, (pin) => {
-    if (!first) {
-      first = pin;
-      _pinEntered = '';
-      _updatePinDots();
-      const t = document.getElementById('pinTitle');
-      if (t) t.textContent = 'Confirm Access PIN';
-      _pinOnComplete = (pin2) => {
-        if (pin2 === first) { closeModal(); onSuccess(pin2); }
-        else { _pinEntered = ''; _updatePinDots(); const e = document.getElementById('pinError'); if (e) e.textContent = "PINs don't match"; }
-      };
-    }
-  });
-}
-
-function setupGroupAccessPin() {
-  _groupPinFlow('Set Group Access PIN', (pin) => {
-    setGroupAccessPin(pin);
-    sessionStorage.setItem('accessGranted-' + GROUP, '1');
-    toast('Group access PIN set 🔒');
-    renderGroupAccessPinSection();
-  });
-}
-
-function changeGroupAccessPin() {
-  _showPinPad('Enter Current Access PIN', (pin) => {
-    if (pin === getGroupAccessPin() || (getAdminPin() && pin === getAdminPin())) {
-      closeModal();
-      setTimeout(() => _groupPinFlow('Set New Access PIN', (newPin) => {
-        setGroupAccessPin(newPin);
-        toast('Access PIN updated 🔒');
-        renderGroupAccessPinSection();
-      }), 200);
-    } else {
-      _pinEntered = ''; _updatePinDots();
-      const e = document.getElementById('pinError'); if (e) e.textContent = 'Incorrect PIN';
-    }
-  });
-}
-
-function confirmRemoveGroupAccessPin() {
-  _showPinPad('Enter PIN to Remove', (pin) => {
-    if (pin === getGroupAccessPin() || (getAdminPin() && pin === getAdminPin())) {
-      removeGroupAccessPin();
-      closeModal();
-      toast('Access PIN removed');
-      renderGroupAccessPinSection();
-    } else {
-      _pinEntered = ''; _updatePinDots();
-      const e = document.getElementById('pinError'); if (e) e.textContent = 'Incorrect PIN';
-    }
-  });
-}
 
 function renderAdminPinSection() {
   const el = document.getElementById('adminPinSection');
@@ -2879,21 +2739,6 @@ function confirmRemoveAdminPin() {
   });
 }
 
-function adminResetGroupPin(groupName, pinKey) {
-  const adminPin = getAdminPin();
-  if (!adminPin) { toast('Set an Admin PIN first'); return; }
-  _showPinPad('Enter Admin PIN to Reset', (pin) => {
-    if (pin === adminPin) {
-      localStorage.removeItem(pinKey);
-      closeModal();
-      toast(groupName.charAt(0).toUpperCase() + groupName.slice(1) + ' access PIN removed');
-      renderAdmin();
-    } else {
-      _pinEntered = ''; _updatePinDots();
-      const e = document.getElementById('pinError'); if (e) e.textContent = 'Incorrect PIN';
-    }
-  });
-}
 
 // ========================================
 // ========================================
@@ -2904,15 +2749,16 @@ let _pinEntered = '';
 let _pinOnComplete = null;
 let _pinFirstEntry = '';
 
-function getPinHash()    { return localStorage.getItem('appPin') || ''; }
-function setPinHash(pin) { localStorage.setItem('appPin', pin); }
-function removePin()     { localStorage.removeItem('appPin'); sessionUnlocked = false; closeModal(); toast('PIN removed'); renderPinSection(); }
+function getPinHash()    { return localStorage.getItem(lsKey('editorPin')) || ''; }
+function setPinHash(pin) { localStorage.setItem(lsKey('editorPin'), pin); }
+function removePin()     { localStorage.removeItem(lsKey('editorPin')); sessionUnlocked = false; closeModal(); toast('Editor PIN removed'); renderPinSection(); }
 function isPinSet()      { return !!getPinHash(); }
 
 function requirePin(callback) {
   if (!isPinSet() || sessionUnlocked) { callback(); return; }
-  _showPinPad('Enter PIN', (pin) => {
-    if (pin === getPinHash()) {
+  _showPinPad('Enter Editor PIN', (pin) => {
+    const adminPin = getAdminPin();
+    if (pin === getPinHash() || (adminPin && pin === adminPin)) {
       sessionUnlocked = true;
       closeModal();
       callback();
@@ -2960,18 +2806,18 @@ function pinKey(key) {
 }
 
 function setupPin() {
-  _showPinPad('Set New PIN', (pin) => {
+  _showPinPad('Set New Editor PIN', (pin) => {
     _pinFirstEntry = pin;
     _pinEntered = '';
     _updatePinDots();
     const t = document.getElementById('pinTitle');
-    if (t) t.textContent = 'Confirm New PIN';
+    if (t) t.textContent = 'Confirm Editor PIN';
     _pinOnComplete = (pin2) => {
       if (pin2 === _pinFirstEntry) {
         setPinHash(pin2);
         sessionUnlocked = true;
         closeModal();
-        toast('PIN set 🔒');
+        toast('Editor PIN set 🔒');
         renderPinSection();
       } else {
         _pinEntered = '';
@@ -2979,9 +2825,9 @@ function setupPin() {
         const err = document.getElementById('pinError');
         if (err) err.textContent = "PINs don't match — try again";
         const t2 = document.getElementById('pinTitle');
-        if (t2) t2.textContent = 'Confirm New PIN';
+        if (t2) t2.textContent = 'Confirm Editor PIN';
         _pinOnComplete = (pin3) => {
-          if (pin3 === _pinFirstEntry) { setPinHash(pin3); sessionUnlocked = true; closeModal(); toast('PIN set 🔒'); renderPinSection(); }
+          if (pin3 === _pinFirstEntry) { setPinHash(pin3); sessionUnlocked = true; closeModal(); toast('Editor PIN set 🔒'); renderPinSection(); }
           else { _pinEntered = ''; _updatePinDots(); const e = document.getElementById('pinError'); if (e) e.textContent = "PINs don't match"; }
         };
       }
@@ -2990,21 +2836,22 @@ function setupPin() {
 }
 
 function changePin() {
-  _showPinPad('Enter Current PIN', (pin) => {
-    if (pin !== getPinHash()) {
+  _showPinPad('Enter Current Editor PIN', (pin) => {
+    const adminPin = getAdminPin();
+    if (pin !== getPinHash() && !(adminPin && pin === adminPin)) {
       _pinEntered = ''; _updatePinDots();
       const err = document.getElementById('pinError'); if (err) err.textContent = 'Incorrect PIN';
       return;
     }
     _pinEntered = '';
-    const t = document.getElementById('pinTitle'); if (t) t.textContent = 'Set New PIN';
+    const t = document.getElementById('pinTitle'); if (t) t.textContent = 'Set New Editor PIN';
     _updatePinDots();
     _pinOnComplete = (newPin) => {
       _pinFirstEntry = newPin; _pinEntered = '';
-      const t2 = document.getElementById('pinTitle'); if (t2) t2.textContent = 'Confirm New PIN';
+      const t2 = document.getElementById('pinTitle'); if (t2) t2.textContent = 'Confirm Editor PIN';
       _updatePinDots();
       _pinOnComplete = (confirmPin) => {
-        if (confirmPin === _pinFirstEntry) { setPinHash(confirmPin); closeModal(); toast('PIN updated 🔒'); renderPinSection(); }
+        if (confirmPin === _pinFirstEntry) { setPinHash(confirmPin); closeModal(); toast('Editor PIN updated 🔒'); renderPinSection(); }
         else { _pinEntered = ''; _updatePinDots(); const e = document.getElementById('pinError'); if (e) e.textContent = "PINs don't match"; }
       };
     };
@@ -3012,8 +2859,9 @@ function changePin() {
 }
 
 function confirmRemovePin() {
-  _showPinPad('Enter PIN to Remove', (pin) => {
-    if (pin !== getPinHash()) {
+  _showPinPad('Enter Editor PIN to Remove', (pin) => {
+    const adminPin = getAdminPin();
+    if (pin !== getPinHash() && !(adminPin && pin === adminPin)) {
       _pinEntered = ''; _updatePinDots();
       const err = document.getElementById('pinError'); if (err) err.textContent = 'Incorrect PIN';
       return;
@@ -3025,20 +2873,21 @@ function confirmRemovePin() {
 function renderPinSection() {
   const el = document.getElementById('pinSection');
   if (!el) return;
+  const label = '<div style="font-size:0.8rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Editor PIN</div>';
   if (isPinSet()) {
     const status = sessionUnlocked
       ? '<span style="color:#4ade80;font-weight:600">Unlocked this session</span>'
       : '<span style="color:var(--red-bad);font-weight:600">Locked</span>';
-    el.innerHTML = `
-      <div style="font-size:0.9rem;color:var(--text-muted);margin-bottom:12px">PIN is set — ${status}</div>
+    el.innerHTML = label + `
+      <div style="font-size:0.9rem;color:var(--text-muted);margin-bottom:12px">Editor PIN is set — ${status}</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn btn-secondary" onclick="changePin()">Change PIN</button>
-        <button class="btn btn-secondary" style="border-color:var(--red-bad);color:var(--red-bad)" onclick="confirmRemovePin()">Remove PIN</button>
+        <button class="btn btn-secondary" onclick="changePin()">Change Editor PIN</button>
+        <button class="btn btn-secondary" style="border-color:var(--red-bad);color:var(--red-bad)" onclick="confirmRemovePin()">Remove Editor PIN</button>
       </div>`;
   } else {
-    el.innerHTML = `
-      <div style="font-size:0.9rem;color:var(--text-muted);margin-bottom:12px">No PIN set. Add a PIN to protect data entry.</div>
-      <button class="btn btn-secondary" onclick="setupPin()">Set Up PIN</button>`;
+    el.innerHTML = label + `
+      <div style="font-size:0.9rem;color:var(--text-muted);margin-bottom:12px">No Editor PIN set. Add a PIN to protect data entry.</div>
+      <button class="btn btn-secondary" onclick="setupPin()">Set Up Editor PIN</button>`;
   }
 }
 
@@ -3077,9 +2926,6 @@ function esc(str) {
 const DATA_VERSION = 'v2-clean';
 
 async function init() {
-  // Group access lock — must pass before any app content is shown
-  await checkGroupAccess();
-
   // Admin mode: ?admin=1 — show all groups, skip normal app init
   if (new URLSearchParams(window.location.search).get('admin') === '1') {
     document.getElementById('headerTitle').textContent = 'Admin';
@@ -3096,8 +2942,8 @@ async function init() {
   // Register this group for admin discovery
   registerGroup();
 
-  // Set default group access PIN (1234) on first load if none exists
-  if (!getGroupAccessPin()) setGroupAccessPin('1234');
+  // Set default Editor PIN (2026) on first load if none exists
+  if (!getPinHash()) setPinHash('2026');
 
   // One-time reset when DATA_VERSION changes — clears to default players, no rounds
   if (localStorage.getItem(lsKey('dataVersion')) !== DATA_VERSION) {

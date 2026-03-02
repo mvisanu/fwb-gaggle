@@ -61,8 +61,10 @@ localStorage keys (outside IndexedDB):
 - `beltHolder` / `<group>-beltHolder` — current belt champion per group (default: `"Josh"`)
 - `dataVersion` / `<group>-dataVersion` — one-time migration key per group (current: `"v2-clean"`)
 - `autoBackup` / `<group>-autoBackup` — silent backup JSON written after every round save
-- `knownGroups` — shared JSON array of all registered group names (used by admin view)
-- `appPin` — shared device-level PIN (not namespaced)
+- `editorPin` / `<group>-editorPin` — per-group Editor PIN (default: `"2026"`)
+- `knownGroups` — shared JSON array of all registered group keys (used by admin view)
+- `groupLabel-<key>` — human-readable label for a group key (e.g. `"Monday Gaggle"`)
+- `adminPin` — shared global Admin PIN (bypasses Editor PIN on any group)
 - `zoomSize` — shared device-level zoom preference (not namespaced)
 
 ## Round Deletion & Recalculation
@@ -125,18 +127,20 @@ Key functions: `renderSkinsPlayers()`, `buildSkinsTable()`, `calcSkins()`, `skin
 
 ## Multi-Group Support
 
-Each group is isolated by the `?group=<name>` URL parameter. Any name works — not limited to days of the week.
+Each group is isolated by the `?group=<key>` URL parameter. The key is a 16-character random hex string (64-bit) — the URL itself is the access control. Share the link = share view access.
 
 - `GROUP` constant read from `new URLSearchParams(window.location.search).get('group') || 'monday'`
-- `GROUP_LABEL` = capitalised group name + " Gaggle" (shown in header)
+- `GROUP_LABEL` = `localStorage.getItem('groupLabel-' + GROUP)` with fallback to capitalised group name + " Gaggle"
 - `DB_NAME`: `'fwbGaggle'` for monday (backward compat), `'fwbGaggle-<group>'` for all others
 - `lsKey(name)` helper: returns `name` for monday, `'<group>-name'` for others
-- All group-specific localStorage keys go through `lsKey()`: `beltHolder`, `dataVersion`, `autoBackup`, `fwb_players`, `fwb_rounds`
-- Shared (no prefix): `appPin`, `zoomSize`, `knownGroups`
-- `registerGroup()` called in `init()` — adds group name to `knownGroups` array in localStorage
+- All group-specific localStorage keys go through `lsKey()`: `beltHolder`, `dataVersion`, `autoBackup`, `editorPin`
+- Shared (no prefix): `adminPin`, `zoomSize`, `knownGroups`, `groupLabel-<key>`
+- `registerGroup()` called in `init()` — adds group key to `knownGroups` array in localStorage
 - **Admin view**: `?admin=1` in URL — skips normal init, hides belt bar, shows `screenAdmin`
   - `renderAdmin()` opens each known group's IndexedDB read-only to get player/round counts
-  - Tap any group card → navigates to `?group=<name>`
+  - Labels looked up from `groupLabel-<key>` in localStorage
+  - Tap any group card → navigates to `?group=<key>`
+  - **Create New Group** button → `adminCreateGroup()` → prompts for a name, calls `generateGroupKey()` (8 random bytes → 16-char hex), stores label, navigates to new group URL
 
 ## Data Versioning
 
@@ -173,9 +177,12 @@ Closest-to-pin on par 3 holes. Configurable $ per greeny (default $1) and number
 - Winner collects `$ per greeny × (N−1)` from other players (zero-sum net winnings)
 - Key functions: `renderGreenyPlayers()`, `buildGreenyCard()`, `calcGreeny()`
 
-## PIN Lock
+## PIN System
 
-4-digit PIN stored in `localStorage` key `appPin`. Once correct PIN is entered in a session, `sessionUnlocked = true` and all subsequent `requirePin()` calls bypass the modal until page refresh.
+Two PIN layers per group. No viewer/access PIN prompt — the URL itself controls who can view.
+
+### Editor PIN
+Per-group 4-digit PIN stored via `lsKey('editorPin')`. Default `"2026"` set on first load if absent. Once correct PIN is entered in a session, `sessionUnlocked = true` and all subsequent `requirePin()` calls bypass the modal until page refresh.
 
 **Protected actions** (all wrapped with `requirePin(() => action())`):
 - Nav buttons: Enter Round, Players
@@ -188,7 +195,12 @@ Closest-to-pin on par 3 holes. Configurable $ per greeny (default $1) and number
 
 **Key functions:** `requirePin(cb)`, `_showPinPad(title, onComplete)`, `pinKey(key)`, `_updatePinDots()`, `setupPin()`, `changePin()`, `confirmRemovePin()`, `removePin()`, `renderPinSection()`
 
-**localStorage key:** `appPin` — stores PIN as plain string (casual app, not sensitive). No PIN = `appPin` absent.
+**localStorage key:** `lsKey('editorPin')` — stores PIN as plain string. Default `"2026"`.
+
+### Admin PIN
+Global (not namespaced) PIN stored in `localStorage` key `adminPin`. Bypasses Editor PIN on any group — accepted by both `requirePin()` and `changePin()`/`confirmRemovePin()`. Managed from the `?admin=1` admin view.
+
+**Key functions:** `getAdminPin()`, `setAdminPin()`, `removeAdminPin()`, `renderAdminPinSection()`, `setupAdminPin()`, `changeAdminPin()`, `confirmRemoveAdminPin()`
 
 ## Key Technical Constraints
 
@@ -225,4 +237,5 @@ Visanu 24, Biscuit 18, Julius 22, PK 15, Todd 20, Timmy 15, Tony 14, Rich 15, Jo
 18. Skins Calculator in Settings: per-hole rates mode calculates zero-sum net winnings; fixed pot mode divides pot across won holes
 19. Payout calculator defaults to 2 places (60/40%); configurable buy-in and 1/2/3 places
 20. Greeny Calculator: select players, pick par 3 winners, shows zero-sum net winnings
-21. PIN lock: Set Up PIN in Settings → Security; ask once per session; all protected actions unlock after correct entry
+21. Editor PIN: default 2026 on first load; ask once per session; all protected actions unlock after correct entry; Admin PIN also accepted
+22. New group creation from admin: generates 16-char hex key, prompts for name, stores label, navigates to new group URL
