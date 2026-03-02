@@ -136,3 +136,40 @@ Tap **Players** to:
 - **Offline** — fully functional without internet after first load. Only Google Fonts requires a connection (degrades gracefully).
 - **Mobile** — designed for 375px phone screens. All tap targets are 44px minimum. Light gray input boxes, white screens throughout.
 - **Deployed** — GitHub Pages at https://mvisanu.github.io/fwb-gaggle/ (auto-deploys on push to `master`)
+
+---
+
+## FAQ
+
+**Q: What if a player doesn't show up that day?**
+Leave their score blank. Only players with a score entered are updated — everyone else keeps their current handicap unchanged.
+
+**Q: How is the round winner decided?**
+The player with the lowest net score wins. Net score = Stableford points − handicap before the round (negative means you beat your handicap). If two players tie on net score, the lower handicap wins.
+
+**Q: How do I change who the belt champion is?**
+Tap the small ✎ pencil icon next to the champion name in the white belt bar at the top. A list of active players appears — tap any name to set them as champion instantly. It also updates automatically when a Monday round is saved.
+
+**Q: What if I enter the wrong score for a round?**
+Go to **History**, expand the round card, and tap **Delete Round**. Then re-enter the round with the correct scores. Deleting a round fully recalculates all handicaps, wins, and winnings from scratch.
+
+**Q: Can two players share the skins or greeny prize?**
+Yes — enter the dollar amount for each player individually in the Skins $ and Greeny $ fields on the Enter Round screen.
+
+**Q: How do I back up my data?**
+Go to **Settings → Export Data**. A JSON file downloads to your device. To restore, use **Settings → Import Data** and select that file.
+
+**Q: Can I use the app on multiple phones?**
+Data is stored locally on each device (IndexedDB). To share data between devices, export from one and import on the other. There is no cloud sync.
+
+**Q: How do I add a new player mid-season?**
+Go to **Players → + Add Player**, enter their name and a starting handicap. They'll appear in the score entry list from the next round onward.
+
+**Q: How do I adjust a player's handicap manually?**
+Go to **Players**, tap the ✎ edit icon next to the player, and change their current handicap. Note: this only affects their current handicap — past round history is unchanged.
+
+**Q: What does the Form Guide show?**
+Each dot represents one of the player's last 10 rounds. Green = handicap dropped (played well), Red = handicap went up, Grey = no change.
+
+**Q: The app looks different after an update — where did my data go?**
+Occasionally a deploy bumps the internal data version to reset the app to a clean state. Export your data regularly via Settings → Export Data as a backup before updates.
