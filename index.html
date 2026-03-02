@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <title>FWB Gaggle — Stableford Tracker</title>
@@ -44,6 +44,7 @@ body {
   min-height: 100dvh;
   overflow-x: hidden;
   -webkit-tap-highlight-color: transparent;
+  line-height: 1.5;
 }
 
 h1, h2, h3, .heading {
@@ -183,8 +184,8 @@ h1, h2, h3, .heading {
   color: var(--gold);
 }
 .stat-label {
-  font-size: 0.7rem;
-  color: var(--gray);
+  font-size: 0.8rem;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-top: 2px;
@@ -235,7 +236,7 @@ h1, h2, h3, .heading {
 .leaderboard .hdcp { font-weight: 700; color: var(--primary); }
 .change-down { color: var(--green-good-on-light); font-weight: 600; }
 .change-up { color: var(--red-bad-on-light); font-weight: 600; }
-.change-same { color: var(--gray); }
+.change-same { color: var(--text-muted); }
 
 /* --- Section Headers --- */
 .section-title {
@@ -284,7 +285,7 @@ h1, h2, h3, .heading {
 }
 .win-rank { color: var(--text-muted); font-weight: 700; width: 28px; font-size: 0.9rem; }
 .win-name { flex: 1; font-weight: 700; font-size: 0.9rem; color: var(--primary-deep); }
-.win-count { font-size: 1rem; margin-right: 8px; color: var(--gold-dark); }
+.win-count { font-size: 1rem; margin-right: 8px; color: var(--primary); }
 .win-pct { color: var(--text-muted); font-size: 0.8rem; width: 48px; text-align: right; }
 
 /* --- Nav Grid --- */
@@ -407,7 +408,7 @@ h1, h2, h3, .heading {
 }
 .chart-empty {
   text-align: center;
-  color: var(--gray);
+  color: var(--text-muted);
   padding: 16px;
   font-size: 0.88rem;
 }
@@ -801,7 +802,7 @@ h1, h2, h3, .heading {
   .stats-banner { gap: 16px; margin-bottom: 24px; }
   .stat-box { padding: 22px 16px; }
   .stat-value { font-size: 2rem; }
-  .stat-label { font-size: 0.75rem; }
+  .stat-label { font-size: 0.85rem; }
 
   .section-title { font-size: 1.5rem; margin: 24px 0 14px; }
 
@@ -1237,7 +1238,7 @@ const DEFAULT_PLAYERS = [
   { name: 'Josh', startingHdcp: 14 }, { name: 'Jordan', startingHdcp: 18 },
   { name: 'Chuck', startingHdcp: 24 }, { name: 'Steve', startingHdcp: 14 },
   { name: 'Ben', startingHdcp: 14 }, { name: 'Ute', startingHdcp: 17 },
-  { name: 'Haj', startingHdcp: 22 }, { name: 'Mikie', startingHdcp: 22 }
+  { name: 'Haj', startingHdcp: 22 }, { name: 'Mikey', startingHdcp: 22 }
 ];
 
 function genId() {
@@ -2475,7 +2476,7 @@ async function doSeedSampleData() {
     { date: '2026-02-01', scores: [
       sc('Visanu', 28, 20, 0), sc('Julius', 24, 0, 0), sc('PK', 19, 0, 5),
       sc('Todd', 19, 0, 0), sc('Timmy', 15, 0, 0), sc('Tony', 17, 0, 0),
-      sc('Rich', 16, 0, 0), sc('Mikie', 26, 10, 0)
+      sc('Rich', 16, 0, 0), sc('Mikey', 26, 10, 0)
     ]},
     { date: '2026-02-08', scores: [
       sc('Visanu', 22, 0, 0), sc('Biscuit', 20, 0, 5), sc('Julius', 27, 20, 0),
@@ -2729,6 +2730,40 @@ async function init() {
 }
 
 init();
+</script>
+
+<!-- Zoom Widget -->
+<div id="zoom-control" style="
+  position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+  display: flex; align-items: center; gap: 8px;
+  background: #1C1C1E; color: #FAFAF9; border-radius: 999px;
+  padding: 8px 16px; font-family: monospace; font-size: 14px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3); user-select: none;
+">
+  <button onclick="zoomWidget(-1)" aria-label="Decrease font size" style="background:none;border:none;color:inherit;cursor:pointer;font-size:16px;min-height:0;padding:0;">A−</button>
+  <span id="zoom-label">100%</span>
+  <button onclick="zoomWidget(1)" aria-label="Increase font size" style="background:none;border:none;color:inherit;cursor:pointer;font-size:18px;min-height:0;padding:0;">A+</button>
+</div>
+<script>
+(function() {
+  var baseSize = parseInt(localStorage.getItem('zoomSize') || 16);
+  document.documentElement.style.fontSize = baseSize + 'px';
+  document.documentElement.style.transition = 'font-size 0.2s ease';
+  document.getElementById('zoom-label').textContent = Math.round((baseSize/16)*100) + '%';
+
+  window.zoomWidget = function(dir) {
+    baseSize = Math.min(24, Math.max(12, baseSize + dir * 2));
+    document.documentElement.style.fontSize = baseSize + 'px';
+    document.getElementById('zoom-label').textContent = Math.round((baseSize/16)*100) + '%';
+    localStorage.setItem('zoomSize', baseSize);
+  };
+
+  document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === '=') { e.preventDefault(); zoomWidget(1); }
+    if (e.ctrlKey && e.key === '-') { e.preventDefault(); zoomWidget(-1); }
+    if (e.ctrlKey && e.key === '0') { e.preventDefault(); baseSize = 16; document.documentElement.style.fontSize = '16px'; document.getElementById('zoom-label').textContent = '100%'; localStorage.setItem('zoomSize', 16); }
+  });
+})();
 </script>
 </body>
 </html>

@@ -135,7 +135,7 @@ Tap the **❓ Help & FAQ** button at the bottom of the dashboard to open the in-
 | PK | 15 | Ben | 14 |
 | Todd | 20 | Ute | 17 |
 | Timmy | 15 | Haj | 22 |
-| Tony | 14 | Mikie | 22 |
+| Tony | 14 | Mikey | 22 |
 | Rich | 15 | Josh | 14 |
 
 ---
