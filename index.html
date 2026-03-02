@@ -237,6 +237,26 @@ h1, h2, h3, .heading {
 .change-down { color: var(--green-good-on-light); font-weight: 600; }
 .change-up { color: var(--red-bad-on-light); font-weight: 600; }
 .change-same { color: var(--text-muted); }
+.leaderboard tr.lb-hidden { display: none; }
+.leaderboard .row-toggle {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: 1rem; padding: 2px 5px;
+  border-radius: 4px; line-height: 1; opacity: 0.45;
+  transition: opacity 0.15s, background 0.15s;
+  font-family: inherit;
+}
+.leaderboard .row-toggle:hover, .leaderboard .row-toggle:active { opacity: 1; background: var(--border-light); }
+.leaderboard tr.lb-hidden .row-toggle { opacity: 1; color: var(--primary); }
+.lb-toolbar {
+  display: flex; align-items: center; justify-content: flex-end;
+  gap: 8px; margin-bottom: 6px; font-size: 0.8rem; color: var(--text-muted);
+}
+.lb-show-all {
+  font-size: 0.78rem; padding: 4px 12px;
+  border: 1px solid var(--primary); border-radius: 20px;
+  background: none; color: var(--primary); cursor: pointer;
+  font-family: inherit;
+}
 
 /* --- Section Headers --- */
 .section-title {
@@ -957,6 +977,10 @@ h1, h2, h3, .heading {
   <div class="content-panel">
     <h2 class="section-title">Leaderboard</h2>
     <div id="tabLeaderboard" style="margin-bottom:20px">
+      <div id="lbToolbar" class="lb-toolbar" style="display:none">
+        <span id="lbHiddenCount"></span>
+        <button class="lb-show-all" onclick="leaderboardExpandAll()">Show All</button>
+      </div>
       <table class="leaderboard">
         <thead><tr id="leaderboardHead"></tr></thead>
         <tbody id="leaderboardBody"></tbody>
@@ -1550,6 +1574,7 @@ document.getElementById('backBtn').addEventListener('click', () => showScreen('s
 // DASHBOARD
 // ========================================
 let _leaderboardData = [];
+let _collapsedIds = new Set();
 let _sortCol = 'hdcp';
 let _sortDir = -1; // -1 = descending, 1 = ascending
 
@@ -1573,6 +1598,20 @@ function handleSort(col) {
   renderLeaderboard();
 }
 
+function toggleLeaderboardRow(playerId) {
+  if (_collapsedIds.has(playerId)) {
+    _collapsedIds.delete(playerId);
+  } else {
+    _collapsedIds.add(playerId);
+  }
+  renderLeaderboard();
+}
+
+function leaderboardExpandAll() {
+  _collapsedIds.clear();
+  renderLeaderboard();
+}
+
 function renderLeaderboard() {
   // Render header
   const head = document.getElementById('leaderboardHead');
@@ -1580,7 +1619,7 @@ function renderLeaderboard() {
     const isSorted = _sortCol === c.key;
     const arrow = isSorted ? (_sortDir === 1 ? '&#9650;' : '&#9660;') : '&#9660;';
     return `<th class="${isSorted ? 'sorted' : ''}" onclick="handleSort('${c.key}')">${c.label}<span class="sort-arrow">${arrow}</span></th>`;
-  }).join('');
+  }).join('') + `<th style="width:30px;cursor:default" title="Hide/show rows"></th>`;
 
   // Sort data
   const sorted = [..._leaderboardData].sort((a, b) => {
@@ -1597,16 +1636,32 @@ function renderLeaderboard() {
   });
 
   const tbody = document.getElementById('leaderboardBody');
-  tbody.innerHTML = sorted.map((p, i) => {
-    return `<tr class="${p.isTopWinner ? 'top-winner' : ''}">
-      <td class="rank">${i + 1}</td>
+  let visibleRank = 0;
+  tbody.innerHTML = sorted.map((p) => {
+    const hidden = _collapsedIds.has(p.id);
+    if (!hidden) visibleRank++;
+    return `<tr class="${p.isTopWinner ? 'top-winner' : ''}${hidden ? ' lb-hidden' : ''}">
+      <td class="rank">${hidden ? '' : visibleRank}</td>
       <td class="player-name">${esc(p.name)}</td>
       <td class="hdcp">${p.hdcp}</td>
       <td>${p.wins > 0 ? '&#127942; ' + p.wins : '—'}</td>
       <td>${p.last !== null ? p.last : '—'}</td>
       <td class="${p.change < 0 ? 'change-down' : p.change > 0 ? 'change-up' : 'change-same'}">${p.change < 0 ? '&#9660;' + Math.abs(p.change) : p.change > 0 ? '&#9650;' + p.change : '—'}</td>
+      <td style="text-align:center;padding:4px 2px"><button class="row-toggle" onclick="toggleLeaderboardRow('${p.id}')" title="${hidden ? 'Show' : 'Hide'}">${hidden ? '&#43;' : '&#10005;'}</button></td>
     </tr>`;
   }).join('');
+
+  // Toolbar — show "N hidden • Show All" when any rows are collapsed
+  const hiddenCount = sorted.filter(p => _collapsedIds.has(p.id)).length;
+  const toolbar = document.getElementById('lbToolbar');
+  if (toolbar) {
+    if (hiddenCount > 0) {
+      document.getElementById('lbHiddenCount').textContent = hiddenCount + (hiddenCount === 1 ? ' hidden' : ' hidden');
+      toolbar.style.display = 'flex';
+    } else {
+      toolbar.style.display = 'none';
+    }
+  }
 }
 
 async function renderDashboard() {
