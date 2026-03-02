@@ -2079,13 +2079,21 @@ function esc(str) {
 // ========================================
 // INIT
 // ========================================
+const DATA_VERSION = 'v2-clean';
+
 async function init() {
   await initDB();
+
+  // One-time reset when DATA_VERSION changes — clears to default players, no rounds
+  if (localStorage.getItem('dataVersion') !== DATA_VERSION) {
+    await clearAll();
+    localStorage.setItem('beltHolder', 'Josh');
+    localStorage.setItem('dataVersion', DATA_VERSION);
+  }
+
   renderBeltHolder();
   await seedDefaultPlayers();
-  const rounds = await getRounds();
-  if (rounds.length === 0) await doSeedSampleData();
-  else renderDashboard();
+  renderDashboard();
 }
 
 init();
