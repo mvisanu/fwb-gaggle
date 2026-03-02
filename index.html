@@ -250,15 +250,20 @@ h1, h2, h3, .heading {
 /* --- Form Guide Dots --- */
 .form-guide { display: flex; gap: 5px; align-items: center; }
 .form-dot {
-  width: 12px;
-  height: 12px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   flex-shrink: 0;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
 }
-.form-dot.down { background: var(--green-good-on-light); }
-.form-dot.up { background: var(--red-bad-on-light); }
-.form-dot.same { background: #cbd5e1; }
+.form-dot.down { background: var(--green-good-on-light); color: #fff; }
+.form-dot.up   { background: var(--red-bad-on-light);   color: #fff; }
+.form-dot.same { background: #cbd5e1; color: #64748b; font-size: 13px; font-weight: 700; }
 
 /* --- Trend Rows --- */
 .trend-row {
@@ -947,9 +952,9 @@ h1, h2, h3, .heading {
 
     <h2 class="section-title">Form Guide</h2>
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;font-size:0.78rem;color:var(--text-dark)">
-      <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:var(--green-good-on-light);display:inline-block"></span> Hdcp dropped (played well)</span>
-      <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:var(--red-bad-on-light);display:inline-block"></span> Hdcp went up (below par)</span>
-      <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:#cbd5e1;display:inline-block"></span> No change</span>
+      <span style="display:flex;align-items:center;gap:5px"><span class="form-dot down">&#8593;</span> Hdcp dropped (played well)</span>
+      <span style="display:flex;align-items:center;gap:5px"><span class="form-dot up">&#8595;</span> Hdcp went up (below par)</span>
+      <span style="display:flex;align-items:center;gap:5px"><span class="form-dot same">&minus;</span> No change</span>
     </div>
     <div id="tabForm" style="margin-bottom:20px">
       <div id="formGuide"></div>
@@ -1713,7 +1718,8 @@ function renderFormGuide(players, rounds) {
         if (!s) return '';
         const diff = s.hdcpAfter - s.hdcpBefore;
         const cls = diff < 0 ? 'down' : diff > 0 ? 'up' : 'same';
-        return `<span class="form-dot ${cls}" title="${r.date}: ${s.actual}pts (${diff >= 0 ? '+' : ''}${diff})"></span>`;
+        const icon = diff < 0 ? '&#8593;' : diff > 0 ? '&#8595;' : '&minus;';
+        return `<span class="form-dot ${cls}" title="${r.date}: ${s.actual}pts (${diff >= 0 ? '+' : ''}${diff})">${icon}</span>`;
       }).join('');
       return `<div class="trend-row">
         <span class="trend-name">${esc(p.name)}</span>
