@@ -653,6 +653,22 @@ h1, h2, h3, .heading {
 .payout-result div { padding: 4px 0; }
 
 .data-section { display: flex; flex-direction: column; gap: 10px; }
+.group-card {
+  background: var(--primary);
+  border-radius: var(--radius);
+  padding: 16px;
+  color: var(--cream);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.group-card:active { opacity: 0.8; }
+.group-card-name { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; color: var(--gold); }
+.group-card-meta { font-size: 0.82rem; color: var(--cream); margin-top: 2px; }
+.group-card-arrow { font-size: 1.4rem; color: var(--gold); }
 .settings-label {
   color: var(--text-dark);
   font-size: 0.85rem;
@@ -1126,6 +1142,12 @@ h1, h2, h3, .heading {
   </div>
 </div>
 
+<!-- ============ ADMIN ============ -->
+<div class="screen" id="screenAdmin">
+  <h2 class="section-title">Admin — All Groups</h2>
+  <div id="adminGroupList"></div>
+</div>
+
 <!-- ============ HELP ============ -->
 <div class="screen" id="screenHelp">
 
@@ -1234,7 +1256,13 @@ h1, h2, h3, .heading {
 // ========================================
 // DATABASE LAYER
 // ========================================
-const DB_NAME = 'fwbGaggle';
+// Multi-group support: ?group=monday (default) | ?group=saturday | etc.
+const GROUP = (new URLSearchParams(window.location.search).get('group') || 'monday').toLowerCase();
+const GROUP_LABEL = GROUP.charAt(0).toUpperCase() + GROUP.slice(1) + ' Gaggle';
+// monday uses original key names for backward compatibility; other groups use prefixed keys
+const DB_NAME = GROUP === 'monday' ? 'fwbGaggle' : 'fwbGaggle-' + GROUP;
+function lsKey(name) { return GROUP === 'monday' ? name : GROUP + '-' + name; }
+
 const DB_VERSION = 1;
 let db = null;
 let useLocalStorage = false;
@@ -1307,11 +1335,11 @@ function idbClear(store) {
 
 // Unified data access
 async function getPlayers() {
-  if (useLocalStorage) return JSON.parse(localStorage.getItem('fwb_players') || '[]');
+  if (useLocalStorage) return JSON.parse(localStorage.getItem(lsKey('fwb_players')) || '[]');
   return idbGetAll('players');
 }
 async function getRounds() {
-  if (useLocalStorage) return JSON.parse(localStorage.getItem('fwb_rounds') || '[]');
+  if (useLocalStorage) return JSON.parse(localStorage.getItem(lsKey('fwb_rounds')) || '[]');
   return idbGetAll('rounds');
 }
 async function putPlayer(p) {
@@ -1319,7 +1347,7 @@ async function putPlayer(p) {
     const all = await getPlayers();
     const idx = all.findIndex(x => x.id === p.id);
     if (idx >= 0) all[idx] = p; else all.push(p);
-    localStorage.setItem('fwb_players', JSON.stringify(all));
+    localStorage.setItem(lsKey('fwb_players'), JSON.stringify(all));
     return;
   }
   return idbPut('players', p);
@@ -1329,7 +1357,7 @@ async function putRound(r) {
     const all = await getRounds();
     const idx = all.findIndex(x => x.id === r.id);
     if (idx >= 0) all[idx] = r; else all.push(r);
-    localStorage.setItem('fwb_rounds', JSON.stringify(all));
+    localStorage.setItem(lsKey('fwb_rounds'), JSON.stringify(all));
     return;
   }
   return idbPut('rounds', r);
@@ -1337,7 +1365,7 @@ async function putRound(r) {
 async function deleteRound(id) {
   if (useLocalStorage) {
     const all = await getRounds();
-    localStorage.setItem('fwb_rounds', JSON.stringify(all.filter(x => x.id !== id)));
+    localStorage.setItem(lsKey('fwb_rounds'), JSON.stringify(all.filter(x => x.id !== id)));
     return;
   }
   return idbDelete('rounds', id);
@@ -1345,15 +1373,15 @@ async function deleteRound(id) {
 async function deletePlayer(id) {
   if (useLocalStorage) {
     const all = await getPlayers();
-    localStorage.setItem('fwb_players', JSON.stringify(all.filter(x => x.id !== id)));
+    localStorage.setItem(lsKey('fwb_players'), JSON.stringify(all.filter(x => x.id !== id)));
     return;
   }
   return idbDelete('players', id);
 }
 async function clearAll() {
   if (useLocalStorage) {
-    localStorage.removeItem('fwb_players');
-    localStorage.removeItem('fwb_rounds');
+    localStorage.removeItem(lsKey('fwb_players'));
+    localStorage.removeItem(lsKey('fwb_rounds'));
     return;
   }
   await idbClear('players');
@@ -1438,10 +1466,10 @@ async function fullRecalculate() {
 // BELT HOLDER
 // ========================================
 function getBeltHolder() {
-  return localStorage.getItem('beltHolder') || 'Josh';
+  return localStorage.getItem(lsKey('beltHolder')) || 'Josh';
 }
 function setBeltHolder(name) {
-  localStorage.setItem('beltHolder', name);
+  localStorage.setItem(lsKey('beltHolder'), name);
 }
 function isMondayDate(dateStr) {
   return new Date(dateStr + 'T00:00:00').getDay() === 1;
@@ -1495,7 +1523,7 @@ function showScreen(id) {
 
   if (id === 'screenDashboard') {
     backBtn.style.visibility = 'hidden';
-    title.textContent = 'FWB Gaggle';
+    title.textContent = GROUP_LABEL;
   } else {
     backBtn.style.visibility = 'visible';
     const titles = {
@@ -1503,9 +1531,10 @@ function showScreen(id) {
       screenHistory: 'Round History',
       screenPlayers: 'Manage Players',
       screenSettings: 'Settings',
-      screenHelp: 'Help & FAQ'
+      screenHelp: 'Help & FAQ',
+      screenAdmin: 'Admin'
     };
-    title.textContent = titles[id] || 'FWB Gaggle';
+    title.textContent = titles[id] || GROUP_LABEL;
   }
 
   window.scrollTo(0, 0);
@@ -1515,6 +1544,7 @@ function showScreen(id) {
   if (id === 'screenHistory') renderHistory();
   if (id === 'screenPlayers') renderPlayerList();
   if (id === 'screenSettings') renderSettings();
+  if (id === 'screenAdmin') renderAdmin();
 }
 
 document.getElementById('backBtn').addEventListener('click', () => showScreen('screenDashboard'));
@@ -2102,8 +2132,65 @@ function renderSettings() {
   renderAutoBackupInfo();
 }
 
+// ========================================
+// ADMIN
+// ========================================
+function registerGroup() {
+  try {
+    const groups = JSON.parse(localStorage.getItem('knownGroups') || '[]');
+    if (!groups.includes(GROUP)) {
+      groups.push(GROUP);
+      localStorage.setItem('knownGroups', JSON.stringify(groups));
+    }
+  } catch(e) {}
+}
+
+async function renderAdmin() {
+  const groups = JSON.parse(localStorage.getItem('knownGroups') || '[]');
+  const div = document.getElementById('adminGroupList');
+  if (groups.length === 0) {
+    div.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:24px">No groups registered yet.<br>Each group registers itself on first load.</div>';
+    return;
+  }
+  const items = await Promise.all(groups.map(async g => {
+    const dbName = g === 'monday' ? 'fwbGaggle' : 'fwbGaggle-' + g;
+    const lk = n => g === 'monday' ? n : g + '-' + n;
+    let players = 0, rounds = 0, lastDate = '—';
+    try {
+      await new Promise((res, rej) => {
+        const r = indexedDB.open(dbName, 1);
+        r.onsuccess = e => {
+          const d = e.target.result;
+          const tx = d.transaction(['players','rounds'], 'readonly');
+          tx.objectStore('players').count().onsuccess = pe => { players = pe.target.result; };
+          tx.objectStore('rounds').getAll().onsuccess = re => {
+            const rs = re.target.result || [];
+            rounds = rs.length;
+            if (rs.length) lastDate = rs.sort((a,b) => b.date.localeCompare(a.date))[0].date;
+            d.close(); res();
+          };
+          tx.onerror = rej;
+        };
+        r.onerror = rej;
+      });
+    } catch(e) {}
+    const label = g.charAt(0).toUpperCase() + g.slice(1) + ' Gaggle';
+    const url = window.location.pathname + '?group=' + g;
+    return `<div class="group-card" onclick="window.location.href='${url}'">
+      <div><div class="group-card-name">${label}</div>
+      <div class="group-card-meta">${players} players · ${rounds} rounds · Last: ${lastDate}</div></div>
+      <span class="group-card-arrow">›</span>
+    </div>`;
+  }));
+  div.innerHTML = items.join('') +
+    `<div style="margin-top:20px;font-size:0.8rem;color:var(--text-muted);text-align:center">
+      Tap any group to open it. Add a new group by visiting<br>
+      <code style="font-size:0.78rem">${window.location.pathname}?group=<em>groupname</em></code>
+    </div>`;
+}
+
 function renderAutoBackupInfo() {
-  const raw = localStorage.getItem('autoBackup');
+  const raw = localStorage.getItem(lsKey('autoBackup'));
   const info = document.getElementById('autoBackupInfo');
   const btn = document.getElementById('restoreAutoBackupBtn');
   if (!raw) { if (info) info.textContent = ''; if (btn) btn.style.display = 'none'; return; }
@@ -2116,7 +2203,7 @@ function renderAutoBackupInfo() {
 }
 
 async function restoreAutoBackup() {
-  const raw = localStorage.getItem('autoBackup');
+  const raw = localStorage.getItem(lsKey('autoBackup'));
   if (!raw) { toast('No auto-backup found'); return; }
   try {
     const { players, rounds } = JSON.parse(raw);
@@ -2382,7 +2469,7 @@ async function autoBackup() {
     const players = await getPlayers();
     const rounds = await getRounds();
     const d = new Date();
-    localStorage.setItem('autoBackup', JSON.stringify({ players, rounds, savedAt: d.toISOString() }));
+    localStorage.setItem(lsKey('autoBackup'), JSON.stringify({ players, rounds, savedAt: d.toISOString() }));
   } catch(e) { /* silent */ }
 }
 
@@ -2763,13 +2850,27 @@ function esc(str) {
 const DATA_VERSION = 'v2-clean';
 
 async function init() {
+  // Admin mode: ?admin=1 — show all groups, skip normal app init
+  if (new URLSearchParams(window.location.search).get('admin') === '1') {
+    document.getElementById('headerTitle').textContent = 'Admin';
+    document.getElementById('backBtn').style.visibility = 'hidden';
+    document.getElementById('beltBar').style.display = 'none';
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screenAdmin').classList.add('active');
+    renderAdmin();
+    return;
+  }
+
   await initDB();
 
+  // Register this group for admin discovery
+  registerGroup();
+
   // One-time reset when DATA_VERSION changes — clears to default players, no rounds
-  if (localStorage.getItem('dataVersion') !== DATA_VERSION) {
+  if (localStorage.getItem(lsKey('dataVersion')) !== DATA_VERSION) {
     await clearAll();
-    localStorage.setItem('beltHolder', 'Josh');
-    localStorage.setItem('dataVersion', DATA_VERSION);
+    localStorage.setItem(lsKey('beltHolder'), 'Josh');
+    localStorage.setItem(lsKey('dataVersion'), DATA_VERSION);
   }
 
   renderBeltHolder();
