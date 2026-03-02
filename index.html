@@ -1667,7 +1667,7 @@ function renderWinningsPieChart(players) {
   }).join('');
   const legend = data.map((p, i) =>
     `<div class="pie-legend-item"><div class="pie-dot" style="background:${PIE_COLORS[i % PIE_COLORS.length]}"></div>` +
-    `<span><strong>${esc(p.name)}</strong> $${p.total} <span style="color:var(--gray);font-size:0.75rem">(Skins $${p.skins} / Greeny $${p.greeny})</span></span></div>`
+    `<span><strong>${esc(p.name)}</strong> $${p.total} <span style="color:var(--text-dark);font-size:0.75rem">(Skins $${p.skins} / Greeny $${p.greeny})</span></span></div>`
   ).join('');
   div.innerHTML = `<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">` +
     `<svg viewBox="0 0 160 160" style="width:150px;height:150px;flex-shrink:0">${slices}</svg>` +
