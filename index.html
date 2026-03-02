@@ -993,8 +993,24 @@ h1, h2, h3, .heading {
 
   <h2 class="section-title">Payout Calculator</h2>
   <div class="payout-calc">
-    <label style="color:var(--text-muted);font-size:0.85rem">Number of Players ($10 buy-in)</label>
-    <input type="number" inputmode="numeric" id="payoutPlayers" class="score-input" style="width:80px;margin-top:6px" value="12" min="1" oninput="calcPayout()">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+      <div>
+        <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">Players</label>
+        <input type="number" inputmode="numeric" id="payoutPlayers" class="score-input" style="width:72px" value="12" min="1" oninput="calcPayout()">
+      </div>
+      <div>
+        <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">Buy-in ($)</label>
+        <input type="number" inputmode="numeric" id="payoutBuyin" class="score-input" style="width:72px" value="10" min="1" oninput="calcPayout()">
+      </div>
+      <div>
+        <label style="color:var(--text-muted);font-size:0.82rem;display:block;margin-bottom:4px">Places Paid</label>
+        <select id="payoutPlaces" class="date-input" style="width:130px;padding:10px 8px" onchange="calcPayout()">
+          <option value="1">1st only</option>
+          <option value="2">1st &amp; 2nd</option>
+          <option value="3" selected>1st, 2nd &amp; 3rd</option>
+        </select>
+      </div>
+    </div>
     <div class="payout-result" id="payoutResult"></div>
   </div>
 
@@ -1955,16 +1971,26 @@ function renderSettings() {
 
 function calcPayout() {
   const n = parseInt(document.getElementById('payoutPlayers').value) || 0;
-  const pot = n * 10;
-  const first = Math.round(pot * 0.5);
-  const second = Math.round(pot * 0.3);
-  const third = pot - first - second;
-  document.getElementById('payoutResult').innerHTML = `
-    <div><strong>Pot:</strong> $${pot}</div>
-    <div style="color:var(--gold)">&#129351; 1st: $${first}</div>
-    <div style="color:var(--gray)">&#129352; 2nd: $${second}</div>
-    <div style="color:#cd7f32">&#129353; 3rd: $${third}</div>
-  `;
+  const buyin = parseFloat(document.getElementById('payoutBuyin').value) || 0;
+  const places = parseInt(document.getElementById('payoutPlaces').value) || 3;
+  const pot = n * buyin;
+  let html = `<div><strong>Pot:</strong> $${pot.toFixed(2)}</div>`;
+  if (places === 1) {
+    html += `<div style="color:var(--gold)">&#129351; 1st: $${pot.toFixed(2)}</div>`;
+  } else if (places === 2) {
+    const first = Math.round(pot * 0.6 * 100) / 100;
+    const second = Math.round((pot - first) * 100) / 100;
+    html += `<div style="color:var(--gold)">&#129351; 1st: $${first.toFixed(2)}</div>`;
+    html += `<div style="color:var(--gray)">&#129352; 2nd: $${second.toFixed(2)}</div>`;
+  } else {
+    const first = Math.round(pot * 0.5 * 100) / 100;
+    const second = Math.round(pot * 0.3 * 100) / 100;
+    const third = Math.round((pot - first - second) * 100) / 100;
+    html += `<div style="color:var(--gold)">&#129351; 1st: $${first.toFixed(2)}</div>`;
+    html += `<div style="color:var(--gray)">&#129352; 2nd: $${second.toFixed(2)}</div>`;
+    html += `<div style="color:#cd7f32">&#129353; 3rd: $${third.toFixed(2)}</div>`;
+  }
+  document.getElementById('payoutResult').innerHTML = html;
 }
 
 async function exportData() {
