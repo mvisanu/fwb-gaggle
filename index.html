@@ -2180,10 +2180,20 @@ async function renderAdmin() {
     } catch(e) {}
     const label = g.charAt(0).toUpperCase() + g.slice(1) + ' Gaggle';
     const url = window.location.pathname + '?group=' + g;
-    return `<div class="group-card" onclick="window.location.href='${url}'">
-      <div><div class="group-card-name">${label}</div>
-      <div class="group-card-meta">${players} players · ${rounds} rounds · Last: ${lastDate}</div></div>
-      <span class="group-card-arrow">›</span>
+    const groupPinKey = g === 'monday' ? 'accessPin' : g + '-accessPin';
+    const hasPin = !!localStorage.getItem(groupPinKey);
+    return `<div style="margin-bottom:10px">
+      <div class="group-card" style="margin-bottom:0;border-radius:12px 12px ${hasPin ? '0 0' : '12px 12px'}" onclick="window.location.href='${url}'">
+        <div><div class="group-card-name">${label}</div>
+        <div class="group-card-meta">${players} players · ${rounds} rounds · Last: ${lastDate}</div></div>
+        <span class="group-card-arrow">›</span>
+      </div>
+      ${hasPin ? `<div style="background:#1a3a22;border-radius:0 0 12px 12px;padding:8px 16px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:0.8rem;color:#d4af37">🔒 Access PIN set</span>
+        <button onclick="adminResetGroupPin('${g}','${groupPinKey}')" style="background:none;border:1px solid #e8443a;border-radius:8px;color:#e8443a;font-size:0.78rem;padding:4px 10px;cursor:pointer">Reset PIN</button>
+      </div>` : `<div style="background:#1a3a22;border-radius:0 0 12px 12px;padding:8px 16px">
+        <span style="font-size:0.8rem;color:var(--text-muted)">No access PIN</span>
+      </div>`}
     </div>`;
   }));
   div.innerHTML = items.join('') +
@@ -2866,6 +2876,22 @@ function confirmRemoveAdminPin() {
   _showPinPad('Enter Admin PIN to Remove', (pin) => {
     if (pin === getAdminPin()) { removeAdminPin(); closeModal(); toast('Admin PIN removed'); renderAdminPinSection(); }
     else { _pinEntered = ''; _updatePinDots(); const e = document.getElementById('pinError'); if (e) e.textContent = 'Incorrect PIN'; }
+  });
+}
+
+function adminResetGroupPin(groupName, pinKey) {
+  const adminPin = getAdminPin();
+  if (!adminPin) { toast('Set an Admin PIN first'); return; }
+  _showPinPad('Enter Admin PIN to Reset', (pin) => {
+    if (pin === adminPin) {
+      localStorage.removeItem(pinKey);
+      closeModal();
+      toast(groupName.charAt(0).toUpperCase() + groupName.slice(1) + ' access PIN removed');
+      renderAdmin();
+    } else {
+      _pinEntered = ''; _updatePinDots();
+      const e = document.getElementById('pinError'); if (e) e.textContent = 'Incorrect PIN';
+    }
   });
 }
 
