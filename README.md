@@ -108,7 +108,7 @@ Tap **Players** to:
 | **Skins Calculator** | Hole-by-hole skins calculator. Two modes: **Per-hole rates** (skin $1, birdie $2, eagle $5 from each player; birdie-tie consolation $1 each) or **Fixed pot** (fixed buy-in split across holes won). Carry-over toggle (default off). |
 | **Greeny Calculator** | Closest-to-pin on par 3s. Configurable $ per greeny (default $1). Select players, pick winner per par 3, shows net winnings. |
 | **Security** | Set a 4-digit PIN to protect data entry. Ask once per session — entering the PIN unlocks all protected actions until page refresh. Protected: Enter Round, Save Round, Players, Belt Champion ✎, Delete Round, Import/Clear/Reset/Load Sample Data. |
-| **Export Data** | Downloads a full backup as `fwb-gaggle-backup-YYYY-MM-DD.json` |
+| **Export Data** | Downloads a full backup as `fwb-gaggle-backup-YYYY-MM-DD.json`. Also triggers automatically after every round save. |
 | **Import Data** | Restores from a previously exported JSON file (PIN protected) |
 | **Clear Round Data** | Wipes all rounds and resets player stats to starting handicaps (PIN protected) |
 | **Load Sample Data** | Loads 6 demo rounds so you can preview all charts (PIN protected) |
@@ -175,7 +175,7 @@ Skins are played hole by hole on stroke scores. Sole best score wins the hole: r
 Yes — enter the dollar amount for each player individually in their own Greeny $ field on the Enter Round screen.
 
 **Q: How do I back up my data?**
-Go to **Settings → Export Data**. A JSON file downloads to your device. To restore, use **Settings → Import Data** and select that file.
+A backup downloads automatically every time a round is saved — no action needed. You can also manually trigger one via **Settings → Export Data**. To restore from a backup, use **Settings → Import Data** and select the JSON file. If your device syncs Downloads to iCloud, Google Drive, or OneDrive, backups are effectively cloud-stored.
 
 **Q: Can I use the app on multiple phones?**
 Data is stored locally on each device (IndexedDB). To share data between devices, export from one and import on the other. There is no cloud sync.
