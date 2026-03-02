@@ -77,7 +77,7 @@ The dashboard is a single scrolling page (no tabs). All sections stack verticall
 2. **Enter Round** — White content panel. Date picker, score inputs (live handicap preview), Skins $ and Greeny $ per player, auto-determines winner on save. Only players with a score entered are updated — absent players keep their current handicap.
 3. **Round History** — Expandable round cards (newest first), delete with full recalculation. Skins/Greeny columns appear automatically if round has winnings data
 4. **Manage Players** — Add/edit/toggle active/delete players. Sub-line shows skins and greeny totals if non-zero
-5. **Settings** — Handicap reference table, payout calculator (configurable buy-in + 1/2/3 places; default 2 places 60/40%), skins calculator (per-hole rates or fixed pot), export/import JSON, Clear Round Data, Load Sample Data, Reset All Data
+5. **Settings** — Handicap reference table, payout calculator (configurable buy-in + 1/2/3 places; default 2 places 60/40%), skins calculator (per-hole rates or fixed pot), greeny calculator (closest-to-pin par 3s), security (4-digit PIN), export/import JSON, Clear Round Data, Load Sample Data, Reset All Data
 6. **Help & FAQ** — Quick Start guide, 10 expandable FAQ items (tap to open/close), handicap rules summary. Accessible via full-width button at bottom of dashboard nav grid.
 
 ## Belt Holder / Monday Champion
@@ -140,6 +140,29 @@ To trigger a one-time reset on next deploy, bump `DATA_VERSION` to a new string.
 - Google Fonts: Bebas Neue (headings), Barlow (body)
 - Screen transitions: fade ~300ms
 
+## Greeny Calculator (Settings tool — does not write to DB)
+
+Closest-to-pin on par 3 holes. Configurable $ per greeny (default $1) and number of par 3 holes (default 3).
+
+- Select players → Build Greeny Card → one winner dropdown per par 3 → Calculate Greeny
+- Winner collects `$ per greeny × (N−1)` from other players (zero-sum net winnings)
+- Key functions: `renderGreenyPlayers()`, `buildGreenyCard()`, `calcGreeny()`
+
+## PIN Lock
+
+4-digit PIN stored in `localStorage` key `appPin`. Once correct PIN is entered in a session, `sessionUnlocked = true` and all subsequent `requirePin()` calls bypass the modal until page refresh.
+
+**Protected actions** (all wrapped with `requirePin(() => action())`):
+- Nav buttons: Enter Round, Players
+- History: Delete Round (`confirmDeleteRound` → `requirePin` → `_confirmDeleteRound`)
+- Settings: Import Data, Clear Round Data, Load Sample Data, Reset All Data
+
+**Not protected:** Export Data, History (view), Settings calculators, Help & FAQ
+
+**Key functions:** `requirePin(cb)`, `_showPinPad(title, onComplete)`, `pinKey(key)`, `_updatePinDots()`, `setupPin()`, `changePin()`, `confirmRemovePin()`, `removePin()`, `renderPinSection()`
+
+**localStorage key:** `appPin` — stores PIN as plain string (casual app, not sensitive). No PIN = `appPin` absent.
+
 ## Key Technical Constraints
 
 - IDs via `crypto.randomUUID()` with fallback
@@ -174,3 +197,5 @@ Visanu 24, Biscuit 18, Julius 22, PK 15, Todd 20, Timmy 15, Tony 14, Rich 15, Jo
 17. Help & FAQ screen accessible from dashboard; FAQ items expand/collapse on tap
 18. Skins Calculator in Settings: per-hole rates mode calculates zero-sum net winnings; fixed pot mode divides pot across won holes
 19. Payout calculator defaults to 2 places (60/40%); configurable buy-in and 1/2/3 places
+20. Greeny Calculator: select players, pick par 3 winners, shows zero-sum net winnings
+21. PIN lock: Set Up PIN in Settings → Security; ask once per session; all protected actions unlock after correct entry

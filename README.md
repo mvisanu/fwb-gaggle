@@ -106,11 +106,13 @@ Tap **Players** to:
 | **Handicap Reference** | Table mapping handicap → expected Stableford points |
 | **Payout Calculator** | Configurable players, buy-in amount, and places paid (1st only / 1st & 2nd / 1st–3rd). Defaults to 2 places at 60/40% split. |
 | **Skins Calculator** | Hole-by-hole skins calculator. Two modes: **Per-hole rates** (skin $1, birdie $2, eagle $5 from each player; birdie-tie consolation $1 each) or **Fixed pot** (fixed buy-in split across holes won). Carry-over toggle (default off). |
+| **Greeny Calculator** | Closest-to-pin on par 3s. Configurable $ per greeny (default $1). Select players, pick winner per par 3, shows net winnings. |
+| **Security** | Set a 4-digit PIN to protect data entry. Ask once per session — entering the PIN unlocks all protected actions until page refresh. |
 | **Export Data** | Downloads a full backup as `fwb-gaggle-backup-YYYY-MM-DD.json` |
-| **Import Data** | Restores from a previously exported JSON file |
-| **Clear Round Data** | Wipes all rounds and resets player stats to starting handicaps |
-| **Load Sample Data** | Loads 6 demo rounds so you can preview all charts |
-| **Reset All Data** | Wipes everything and restores the 16 default players (double-confirmed) |
+| **Import Data** | Restores from a previously exported JSON file (PIN protected) |
+| **Clear Round Data** | Wipes all rounds and resets player stats to starting handicaps (PIN protected) |
+| **Load Sample Data** | Loads 6 demo rounds so you can preview all charts (PIN protected) |
+| **Reset All Data** | Wipes everything and restores the 16 default players (double-confirmed, PIN protected) |
 
 ---
 
