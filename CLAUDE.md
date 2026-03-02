@@ -136,9 +136,15 @@ To trigger a one-time reset on next deploy, bump `DATA_VERSION` to a new string.
 - Handicap down (good): `#4ade80` / `#16a34a` (on light), handicap up (bad): `#e8443a` / `#dc2626`
 - **White body background:** `--white: #ffffff` — all screens, inputs, history cards use white/light-gray
 - Input background: `--row-stripe: #f1f5f9` (light gray for all input boxes)
-- 44px minimum tap targets, 18px+ input font size
+- Text: `--text-dark: #1e293b`, muted: `--text-muted: #64748b` (WCAG AA on white)
+- 44px minimum tap targets, 18px+ input font size, body `line-height: 1.5`
+- Native pinch-zoom enabled (no `user-scalable=no`)
 - Google Fonts: Bebas Neue (headings), Barlow (body)
 - Screen transitions: fade ~300ms
+
+## Zoom Widget
+
+Floating pill fixed bottom-right (`z-index: 9999`). Fades to 25% opacity at rest, full opacity on hover/focus. Font size range 12–24px in 2px steps, persisted via `localStorage` key `zoomSize`. Keyboard: Ctrl+= zoom in, Ctrl+− zoom out, Ctrl+0 reset. Implemented as inline HTML+`<script>` block after `</script>` (main app), before `</body>`.
 
 ## Greeny Calculator (Settings tool — does not write to DB)
 
@@ -176,7 +182,7 @@ Closest-to-pin on par 3 holes. Configurable $ per greeny (default $1) and number
 
 ## Default Players (preloaded on first launch)
 
-Visanu 24, Biscuit 18, Julius 22, PK 15, Todd 20, Timmy 15, Tony 14, Rich 15, Josh 14, Jordan 18, Chuck 24, Steve 14, Ben 14, Ute 17, Haj 22, Mikie 22
+Visanu 24, Biscuit 18, Julius 22, PK 15, Todd 20, Timmy 15, Tony 14, Rich 15, Josh 14, Jordan 18, Chuck 24, Steve 14, Ben 14, Ute 17, Haj 22, Mikey 22
 
 ## QA Checklist (verify before finishing)
 

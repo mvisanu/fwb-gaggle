@@ -43,7 +43,7 @@ The home screen scrolls through all sections:
 | **Wins** | Gold horizontal bar chart — one bar per player, length = total wins |
 | **Winnings** | Colour-coded pie chart showing each player's share of total skins + greeny dollars |
 | **Win Leaderboard** | Ranked by wins with win percentage |
-| **Form Guide** | Last 10 rounds as coloured dots — green = handicap dropped, red = went up, grey = no change |
+| **Form Guide** | Last 10 rounds as arrows — green ↑ = handicap dropped (played well), red ↓ = went up, grey − = no change |
 
 ---
 
@@ -133,7 +133,7 @@ Tap the **❓ Help & FAQ** button at the bottom of the dashboard to open the in-
 | Biscuit | 18 | Chuck | 24 |
 | Julius | 22 | Steve | 14 |
 | PK | 15 | Ben | 14 |
-| Todd | 20 | Ute | 17 |
+| Todd | 20 | Yut | 17 |
 | Timmy | 15 | Haj | 22 |
 | Tony | 14 | Mikey | 22 |
 | Rich | 15 | Josh | 14 |
@@ -147,7 +147,9 @@ Tap the **❓ Help & FAQ** button at the bottom of the dashboard to open the in-
 - **Belt champion** — stored in `localStorage` key `beltHolder`. Defaults to `"Josh"`.
 - **Data versioning** — a `DATA_VERSION` constant triggers a one-time clean reset when bumped on deploy.
 - **Offline** — fully functional without internet after first load. Only Google Fonts requires a connection (degrades gracefully).
-- **Mobile** — designed for 375px phone screens. All tap targets are 44px minimum. Light gray input boxes, white screens throughout.
+- **Mobile** — designed for 375px phone screens. All tap targets are 44px minimum. Light gray input boxes, white screens throughout. Native pinch-zoom enabled.
+- **Zoom widget** — floating A−/100%/A+ pill (bottom-right, fades until hovered). Font size 12–24px in 2px steps. Keyboard: Ctrl+= / Ctrl+− / Ctrl+0. Persists via `localStorage` key `zoomSize`.
+- **Accessibility** — WCAG AA contrast on all text. Body line-height 1.5.
 - **Deployed** — GitHub Pages at https://mvisanu.github.io/fwb-gaggle/ (auto-deploys on push to `master`)
 
 ---
@@ -185,7 +187,7 @@ Go to **Players → + Add Player**, enter their name and a starting handicap. Th
 Go to **Players**, tap the ✎ edit icon next to the player, and change their current handicap. Note: this only affects their current handicap — past round history is unchanged.
 
 **Q: What does the Form Guide show?**
-Each dot represents one of the player's last 10 rounds. Green = handicap dropped (played well), Red = handicap went up, Grey = no change.
+Each arrow represents one of the player's last 10 rounds. Green ↑ = handicap dropped (played well), Red ↓ = handicap went up, Grey − = no change. Players who didn't play a given round are simply skipped.
 
 **Q: The app looks different after an update — where did my data go?**
 Occasionally a deploy bumps the internal data version to reset the app to a clean state. Export your data regularly via Settings → Export Data as a backup before updates.
