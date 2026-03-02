@@ -1127,7 +1127,8 @@ h1, h2, h3, .heading {
   </div>
 
   <h2 class="section-title">Security</h2>
-  <div class="payout-calc" id="pinSection"></div>
+  <div class="payout-calc" id="pinSection" style="margin-bottom:10px"></div>
+  <div class="payout-calc" id="groupAccessPinSection"></div>
 
   <h2 class="section-title">Data Management</h2>
   <div class="data-section">
@@ -1146,6 +1147,8 @@ h1, h2, h3, .heading {
 <div class="screen" id="screenAdmin">
   <h2 class="section-title">Admin — All Groups</h2>
   <div id="adminGroupList"></div>
+  <h2 class="section-title" style="margin-top:24px">Admin PIN</h2>
+  <div class="payout-calc" id="adminPinSection"></div>
 </div>
 
 <!-- ============ HELP ============ -->
@@ -2129,6 +2132,7 @@ function renderSettings() {
   renderSkinsPlayers();
   renderGreenyPlayers();
   renderPinSection();
+  renderGroupAccessPinSection();
   renderAutoBackupInfo();
 }
 
@@ -2187,6 +2191,7 @@ async function renderAdmin() {
       Tap any group to open it. Add a new group by visiting<br>
       <code style="font-size:0.78rem">${window.location.pathname}?group=<em>groupname</em></code>
     </div>`;
+  renderAdminPinSection();
 }
 
 function renderAutoBackupInfo() {
@@ -2669,6 +2674,202 @@ async function doReset() {
 }
 
 // ========================================
+// GROUP ACCESS LOCK
+// ========================================
+let _accessPinEntered = '';
+let _accessResolve = null;
+
+function getGroupAccessPin() { return localStorage.getItem(lsKey('accessPin')) || ''; }
+function setGroupAccessPin(pin) { localStorage.setItem(lsKey('accessPin'), pin); }
+function removeGroupAccessPin() { localStorage.removeItem(lsKey('accessPin')); }
+function getAdminPin() { return localStorage.getItem('adminPin') || ''; }
+function setAdminPin(pin) { localStorage.setItem('adminPin', pin); }
+function removeAdminPin() { localStorage.removeItem('adminPin'); }
+
+async function checkGroupAccess() {
+  if (!getGroupAccessPin()) return;
+  if (sessionStorage.getItem('accessGranted-' + GROUP) === '1') return;
+  return new Promise(resolve => {
+    _accessResolve = resolve;
+    _showAccessLock();
+  });
+}
+
+function _showAccessLock() {
+  _accessPinEntered = '';
+  const overlay = document.createElement('div');
+  overlay.id = 'accessLockOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#0d2818;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:4px';
+  overlay.innerHTML = `
+    <div style="font-family:\'Bebas Neue\',sans-serif;font-size:2rem;color:#d4af37;letter-spacing:3px;text-align:center">${GROUP_LABEL}</div>
+    <div style="color:#f5f0e1;font-size:0.95rem;margin-bottom:12px;text-align:center">🔒 Enter access PIN to continue</div>
+    <div id="accessPinDots" style="text-align:center;font-size:1.8rem;letter-spacing:16px;margin-bottom:6px">○○○○</div>
+    <div id="accessPinError" style="color:#e8443a;text-align:center;min-height:20px;margin-bottom:8px;font-size:0.88rem"></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:220px">
+      ${[1,2,3,4,5,6,7,8,9].map(d=>`<button onclick="accessPinKey(${d})" style="background:#1a472a;border:1px solid rgba(255,255,255,0.2);border-radius:12px;color:#f5f0e1;font-size:1.2rem;font-weight:700;padding:14px 0;cursor:pointer;-webkit-tap-highlight-color:transparent">${d}</button>`).join('')}
+      <div></div>
+      <button onclick="accessPinKey(0)" style="background:#1a472a;border:1px solid rgba(255,255,255,0.2);border-radius:12px;color:#f5f0e1;font-size:1.2rem;font-weight:700;padding:14px 0;cursor:pointer;-webkit-tap-highlight-color:transparent">0</button>
+      <button onclick="accessPinKey('del')" style="background:#1a472a;border:1px solid rgba(255,255,255,0.2);border-radius:12px;color:#f5f0e1;font-size:1.1rem;padding:14px 0;cursor:pointer;-webkit-tap-highlight-color:transparent">⌫</button>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function _updateAccessDots() {
+  const el = document.getElementById('accessPinDots');
+  if (el) el.textContent = '●'.repeat(_accessPinEntered.length) + '○'.repeat(4 - _accessPinEntered.length);
+}
+
+function accessPinKey(key) {
+  if (key === 'del') { _accessPinEntered = _accessPinEntered.slice(0,-1); _updateAccessDots(); return; }
+  if (_accessPinEntered.length >= 4) return;
+  _accessPinEntered += key;
+  _updateAccessDots();
+  if (_accessPinEntered.length === 4) {
+    const entered = _accessPinEntered;
+    setTimeout(() => {
+      const groupPin = getGroupAccessPin();
+      const adminPin = getAdminPin();
+      if ((groupPin && entered === groupPin) || (adminPin && entered === adminPin)) {
+        sessionStorage.setItem('accessGranted-' + GROUP, '1');
+        const overlay = document.getElementById('accessLockOverlay');
+        if (overlay) overlay.remove();
+        if (_accessResolve) { _accessResolve(); _accessResolve = null; }
+      } else {
+        _accessPinEntered = '';
+        _updateAccessDots();
+        const err = document.getElementById('accessPinError');
+        if (err) { err.textContent = 'Incorrect PIN'; setTimeout(() => { err.textContent = ''; }, 1500); }
+      }
+    }, 150);
+  }
+}
+
+function renderGroupAccessPinSection() {
+  const el = document.getElementById('groupAccessPinSection');
+  if (!el) return;
+  const pin = getGroupAccessPin();
+  const label = '<div style="font-size:0.8rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Group Access PIN</div>';
+  if (pin) {
+    el.innerHTML = label +
+      `<div style="font-size:0.9rem;color:var(--text-muted);margin-bottom:12px">Access PIN is set — visitors must enter it to view this group.</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-secondary" onclick="changeGroupAccessPin()">Change Access PIN</button>
+        <button class="btn btn-secondary" style="border-color:var(--red-bad);color:var(--red-bad)" onclick="confirmRemoveGroupAccessPin()">Remove Access PIN</button>
+      </div>`;
+  } else {
+    el.innerHTML = label +
+      `<div style="font-size:0.9rem;color:var(--text-muted);margin-bottom:12px">No access PIN — anyone with the URL can view this group.</div>
+      <button class="btn btn-secondary" onclick="setupGroupAccessPin()">Set Group Access PIN</button>`;
+  }
+}
+
+function _groupPinFlow(title, onSuccess) {
+  let first = '';
+  _pinEntered = '';
+  _pinOnComplete = null;
+  _showPinPad(title, (pin) => {
+    if (!first) {
+      first = pin;
+      _pinEntered = '';
+      _updatePinDots();
+      const t = document.getElementById('pinTitle');
+      if (t) t.textContent = 'Confirm Access PIN';
+      _pinOnComplete = (pin2) => {
+        if (pin2 === first) { closeModal(); onSuccess(pin2); }
+        else { _pinEntered = ''; _updatePinDots(); const e = document.getElementById('pinError'); if (e) e.textContent = "PINs don't match"; }
+      };
+    }
+  });
+}
+
+function setupGroupAccessPin() {
+  _groupPinFlow('Set Group Access PIN', (pin) => {
+    setGroupAccessPin(pin);
+    sessionStorage.setItem('accessGranted-' + GROUP, '1');
+    toast('Group access PIN set 🔒');
+    renderGroupAccessPinSection();
+  });
+}
+
+function changeGroupAccessPin() {
+  _showPinPad('Enter Current Access PIN', (pin) => {
+    if (pin === getGroupAccessPin() || (getAdminPin() && pin === getAdminPin())) {
+      closeModal();
+      setTimeout(() => _groupPinFlow('Set New Access PIN', (newPin) => {
+        setGroupAccessPin(newPin);
+        toast('Access PIN updated 🔒');
+        renderGroupAccessPinSection();
+      }), 200);
+    } else {
+      _pinEntered = ''; _updatePinDots();
+      const e = document.getElementById('pinError'); if (e) e.textContent = 'Incorrect PIN';
+    }
+  });
+}
+
+function confirmRemoveGroupAccessPin() {
+  _showPinPad('Enter PIN to Remove', (pin) => {
+    if (pin === getGroupAccessPin() || (getAdminPin() && pin === getAdminPin())) {
+      removeGroupAccessPin();
+      closeModal();
+      toast('Access PIN removed');
+      renderGroupAccessPinSection();
+    } else {
+      _pinEntered = ''; _updatePinDots();
+      const e = document.getElementById('pinError'); if (e) e.textContent = 'Incorrect PIN';
+    }
+  });
+}
+
+function renderAdminPinSection() {
+  const el = document.getElementById('adminPinSection');
+  if (!el) return;
+  const pin = getAdminPin();
+  if (pin) {
+    el.innerHTML = `<div style="font-size:0.9rem;color:var(--text-muted);margin-bottom:12px">Admin PIN is set — use it to bypass any group's access PIN.</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-secondary" onclick="changeAdminPin()">Change Admin PIN</button>
+        <button class="btn btn-secondary" style="border-color:var(--red-bad);color:var(--red-bad)" onclick="confirmRemoveAdminPin()">Remove Admin PIN</button>
+      </div>`;
+  } else {
+    el.innerHTML = `<div style="font-size:0.9rem;color:var(--text-muted);margin-bottom:12px">No admin PIN set. Set one to bypass any group's access PIN.</div>
+      <button class="btn btn-secondary" onclick="setupAdminPin()">Set Admin PIN</button>`;
+  }
+}
+
+function _adminPinFlow(title, onSuccess) {
+  let first = '';
+  _pinEntered = '';
+  _pinOnComplete = null;
+  _showPinPad(title, (pin) => {
+    if (!first) {
+      first = pin; _pinEntered = ''; _updatePinDots();
+      const t = document.getElementById('pinTitle'); if (t) t.textContent = 'Confirm Admin PIN';
+      _pinOnComplete = (pin2) => {
+        if (pin2 === first) { closeModal(); onSuccess(pin2); }
+        else { _pinEntered = ''; _updatePinDots(); const e = document.getElementById('pinError'); if (e) e.textContent = "PINs don't match"; }
+      };
+    }
+  });
+}
+
+function setupAdminPin() { _adminPinFlow('Set Admin PIN', (pin) => { setAdminPin(pin); toast('Admin PIN set 🔒'); renderAdminPinSection(); }); }
+function changeAdminPin() {
+  _showPinPad('Enter Current Admin PIN', (pin) => {
+    if (pin === getAdminPin()) {
+      closeModal();
+      setTimeout(() => _adminPinFlow('Set New Admin PIN', (newPin) => { setAdminPin(newPin); toast('Admin PIN updated 🔒'); renderAdminPinSection(); }), 200);
+    } else { _pinEntered = ''; _updatePinDots(); const e = document.getElementById('pinError'); if (e) e.textContent = 'Incorrect PIN'; }
+  });
+}
+function confirmRemoveAdminPin() {
+  _showPinPad('Enter Admin PIN to Remove', (pin) => {
+    if (pin === getAdminPin()) { removeAdminPin(); closeModal(); toast('Admin PIN removed'); renderAdminPinSection(); }
+    else { _pinEntered = ''; _updatePinDots(); const e = document.getElementById('pinError'); if (e) e.textContent = 'Incorrect PIN'; }
+  });
+}
+
+// ========================================
 // ========================================
 // PIN LOCK
 // ========================================
@@ -2850,6 +3051,9 @@ function esc(str) {
 const DATA_VERSION = 'v2-clean';
 
 async function init() {
+  // Group access lock — must pass before any app content is shown
+  await checkGroupAccess();
+
   // Admin mode: ?admin=1 — show all groups, skip normal app init
   if (new URLSearchParams(window.location.search).get('admin') === '1') {
     document.getElementById('headerTitle').textContent = 'Admin';
