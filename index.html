@@ -2171,11 +2171,8 @@ async function saveRound() {
 
   if (rawScores.length === 0) { toast('Enter at least one score'); return; }
 
-  // Dollar amounts entered directly — pass through as-is
-  const scores = rawScores.map(s => ({
-    ...s,
-    stablefordWon: undefined  // will be resolved below
-  }));
+  // Dollar amounts entered directly — pass through as-is (stablefordWon resolved below as payoutWon)
+  const scores = rawScores.map(({ stablefordWon: _drop, ...s }) => s);
 
   savingRound = true;
   document.getElementById('saveRoundBtn').disabled = true;
