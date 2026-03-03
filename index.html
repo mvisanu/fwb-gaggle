@@ -1053,16 +1053,23 @@ h1, h2, h3, .heading {
   </div>
 
   <h2 class="section-title">Competition</h2>
-  <div class="payout-calc" style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+  <div class="payout-calc" style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px">
     <div>
-      <label class="settings-label">Buy-in per player ($)</label>
+      <label class="settings-label">Stableford buy-in ($/player)</label>
       <input type="number" inputmode="decimal" id="competitionBuyinInput" class="score-input" style="width:80px" min="0.5" step="0.5" oninput="saveCompetitionBuyin()">
     </div>
-    <div style="font-size:0.8rem;color:var(--text-muted);line-height:1.6">
-      Auto-applied when saving rounds:<br>
-      &lt;8 players → 1st place 100%<br>
-      8+ players → 1st 60%, 2nd 40%
+    <div>
+      <label class="settings-label">Skins rate ($/skin/player)</label>
+      <input type="number" inputmode="decimal" id="skinsRateInput" class="score-input" style="width:80px" min="0.5" step="0.5" oninput="saveSkinsRate()">
     </div>
+    <div>
+      <label class="settings-label">Greeny rate ($/greeny/player)</label>
+      <input type="number" inputmode="decimal" id="greenyRateInput" class="score-input" style="width:80px" min="0.5" step="0.5" oninput="saveGreenyRate()">
+    </div>
+  </div>
+  <div style="font-size:0.8rem;color:var(--text-muted);line-height:1.6;margin-bottom:16px">
+    Stableford: &lt;8 players → 1st 100% &nbsp;|&nbsp; 8+ players → 1st 60%, 2nd 40%<br>
+    Skins &amp; Greeny: enter <em>count won</em> when saving a round — dollars = count × rate × players
   </div>
 
   <h2 class="section-title">Payout Calculator</h2>
@@ -1326,10 +1333,23 @@ function genId() {
 function getCompetitionBuyin() {
   return parseFloat(localStorage.getItem(lsKey('competitionBuyin')) || '5');
 }
-
 function saveCompetitionBuyin() {
   const val = parseFloat(document.getElementById('competitionBuyinInput').value);
   if (!isNaN(val) && val > 0) localStorage.setItem(lsKey('competitionBuyin'), val.toString());
+}
+function getSkinsRate() {
+  return parseFloat(localStorage.getItem(lsKey('skinsRate')) || '1');
+}
+function saveSkinsRate() {
+  const val = parseFloat(document.getElementById('skinsRateInput').value);
+  if (!isNaN(val) && val > 0) localStorage.setItem(lsKey('skinsRate'), val.toString());
+}
+function getGreenyRate() {
+  return parseFloat(localStorage.getItem(lsKey('greenyRate')) || '1');
+}
+function saveGreenyRate() {
+  const val = parseFloat(document.getElementById('greenyRateInput').value);
+  if (!isNaN(val) && val > 0) localStorage.setItem(lsKey('greenyRate'), val.toString());
 }
 
 // Returns { playerId: payoutAmount } for the round based on player count and buy-in
@@ -1906,8 +1926,8 @@ async function renderScoreEntry() {
       <input type="number" inputmode="numeric" class="score-input" data-player-id="${p.id}" data-hdcp="${p.currentHdcp}" placeholder="—" min="0" max="60" oninput="previewScore(this)">
       <div class="score-preview" id="preview-${p.id}"></div>
       <div class="score-extras">
-        <label class="score-extra-label"><span>Skins $</span><input type="number" inputmode="decimal" class="skins-input money-input" data-player-id="${p.id}" placeholder="0" min="0" step="0.5"></label>
-        <label class="score-extra-label"><span>Greeny $</span><input type="number" inputmode="decimal" class="greeny-input money-input" data-player-id="${p.id}" placeholder="0" min="0" step="0.5"></label>
+        <label class="score-extra-label"><span>Skins</span><input type="number" inputmode="numeric" class="skins-input money-input" data-player-id="${p.id}" placeholder="0" min="0" step="1"></label>
+        <label class="score-extra-label"><span>Greeny</span><input type="number" inputmode="numeric" class="greeny-input money-input" data-player-id="${p.id}" placeholder="0" min="0" step="1"></label>
       </div>
     </div>`;
   }).join('');
@@ -1951,7 +1971,7 @@ async function saveRound() {
   if (!date) { toast('Please select a date'); return; }
 
   const inputs = document.querySelectorAll('#scoreEntryList .score-input');
-  const scores = [];
+  const rawScores = [];
   for (const input of inputs) {
     if (!input.value) continue;
     const actual = parseInt(input.value);
@@ -1961,12 +1981,24 @@ async function saveRound() {
     const hdcpAfter = calcHandicap(hdcpBefore, actual);
     const skinsEl = document.querySelector(`.skins-input[data-player-id="${playerId}"]`);
     const greenyEl = document.querySelector(`.greeny-input[data-player-id="${playerId}"]`);
-    const skinsWon = skinsEl && skinsEl.value ? parseFloat(skinsEl.value) || 0 : 0;
-    const greenyWon = greenyEl && greenyEl.value ? parseFloat(greenyEl.value) || 0 : 0;
-    scores.push({ playerId, playerName: '', hdcpBefore, actual, hdcpAfter, netScore: actual - hdcpBefore, skinsWon, greenyWon });
+    const skinsCount = skinsEl && skinsEl.value ? parseInt(skinsEl.value) || 0 : 0;
+    const greenyCount = greenyEl && greenyEl.value ? parseInt(greenyEl.value) || 0 : 0;
+    rawScores.push({ playerId, playerName: '', hdcpBefore, actual, hdcpAfter, netScore: actual - hdcpBefore, skinsCount, greenyCount });
   }
 
-  if (scores.length === 0) { toast('Enter at least one score'); return; }
+  if (rawScores.length === 0) { toast('Enter at least one score'); return; }
+
+  // Convert skins/greeny counts to dollar amounts: count × rate × numPlayers
+  const numPlayers = rawScores.length;
+  const skinsRate = getSkinsRate();
+  const greenyRate = getGreenyRate();
+  const scores = rawScores.map(s => ({
+    ...s,
+    skinsWon: Math.round(s.skinsCount * skinsRate * numPlayers * 100) / 100,
+    greenyWon: Math.round(s.greenyCount * greenyRate * numPlayers * 100) / 100,
+    skinsCount: undefined,
+    greenyCount: undefined
+  }));
 
   savingRound = true;
   document.getElementById('saveRoundBtn').disabled = true;
@@ -2262,6 +2294,10 @@ async function doDeletePlayer(playerId) {
 function renderSettings() {
   const buyinEl = document.getElementById('competitionBuyinInput');
   if (buyinEl) buyinEl.value = getCompetitionBuyin();
+  const skinsRateEl = document.getElementById('skinsRateInput');
+  if (skinsRateEl) skinsRateEl.value = getSkinsRate();
+  const greenyRateEl = document.getElementById('greenyRateInput');
+  if (greenyRateEl) greenyRateEl.value = getGreenyRate();
 
   // Handicap reference table
   const table = document.getElementById('hdcpRefTable');
