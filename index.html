@@ -387,7 +387,8 @@ h1, h2, h3, .heading {
 .score-extras {
   width: 100%;
   display: flex;
-  gap: 16px;
+  gap: 10px;
+  flex-wrap: wrap;
   padding: 6px 0 2px;
 }
 .score-extra-label {
@@ -1926,8 +1927,9 @@ async function renderScoreEntry() {
       <input type="number" inputmode="numeric" class="score-input" data-player-id="${p.id}" data-hdcp="${p.currentHdcp}" placeholder="—" min="0" max="60" oninput="previewScore(this)">
       <div class="score-preview" id="preview-${p.id}"></div>
       <div class="score-extras">
-        <label class="score-extra-label"><span>Skins</span><input type="number" inputmode="numeric" class="skins-input money-input" data-player-id="${p.id}" placeholder="0" min="0" step="1"></label>
-        <label class="score-extra-label"><span>Greeny</span><input type="number" inputmode="numeric" class="greeny-input money-input" data-player-id="${p.id}" placeholder="0" min="0" step="1"></label>
+        <label class="score-extra-label"><span>$ Skins</span><input type="number" inputmode="decimal" class="skins-input money-input" data-player-id="${p.id}" placeholder="0.00" min="0" step="0.5"></label>
+        <label class="score-extra-label"><span>$ Greeny</span><input type="number" inputmode="decimal" class="greeny-input money-input" data-player-id="${p.id}" placeholder="0.00" min="0" step="0.5"></label>
+        <label class="score-extra-label"><span>$ Stableford</span><input type="number" inputmode="decimal" class="stableford-input money-input" data-player-id="${p.id}" placeholder="0.00" min="0" step="0.5"></label>
       </div>
     </div>`;
   }).join('');
@@ -1981,23 +1983,19 @@ async function saveRound() {
     const hdcpAfter = calcHandicap(hdcpBefore, actual);
     const skinsEl = document.querySelector(`.skins-input[data-player-id="${playerId}"]`);
     const greenyEl = document.querySelector(`.greeny-input[data-player-id="${playerId}"]`);
-    const skinsCount = skinsEl && skinsEl.value ? parseInt(skinsEl.value) || 0 : 0;
-    const greenyCount = greenyEl && greenyEl.value ? parseInt(greenyEl.value) || 0 : 0;
-    rawScores.push({ playerId, playerName: '', hdcpBefore, actual, hdcpAfter, netScore: actual - hdcpBefore, skinsCount, greenyCount });
+    const stablefordEl = document.querySelector(`.stableford-input[data-player-id="${playerId}"]`);
+    const skinsWon = skinsEl && skinsEl.value ? Math.round(parseFloat(skinsEl.value) * 100) / 100 || 0 : 0;
+    const greenyWon = greenyEl && greenyEl.value ? Math.round(parseFloat(greenyEl.value) * 100) / 100 || 0 : 0;
+    const stablefordWon = stablefordEl && stablefordEl.value ? Math.round(parseFloat(stablefordEl.value) * 100) / 100 || 0 : 0;
+    rawScores.push({ playerId, playerName: '', hdcpBefore, actual, hdcpAfter, netScore: actual - hdcpBefore, skinsWon, greenyWon, stablefordWon });
   }
 
   if (rawScores.length === 0) { toast('Enter at least one score'); return; }
 
-  // Convert skins/greeny counts to dollar amounts: count × rate × numPlayers
-  const numPlayers = rawScores.length;
-  const skinsRate = getSkinsRate();
-  const greenyRate = getGreenyRate();
+  // Dollar amounts entered directly — pass through as-is
   const scores = rawScores.map(s => ({
     ...s,
-    skinsWon: Math.round(s.skinsCount * skinsRate * numPlayers * 100) / 100,
-    greenyWon: Math.round(s.greenyCount * greenyRate * numPlayers * 100) / 100,
-    skinsCount: undefined,
-    greenyCount: undefined
+    stablefordWon: undefined  // will be resolved below
   }));
 
   savingRound = true;
@@ -2028,9 +2026,17 @@ async function saveRound() {
 
     const winnerPlayer = players.find(p => p.id === winnerId);
 
-    // Calculate competition payouts
-    const payouts = calcCompetitionPayouts(scores);
-    for (const s of scores) s.payoutWon = payouts[s.playerId] || 0;
+    // Use manually entered stableford amounts if any are non-zero; otherwise auto-calc competition payouts
+    const hasManualStableford = rawScores.some(s => s.stablefordWon > 0);
+    if (hasManualStableford) {
+      for (const s of scores) {
+        const raw = rawScores.find(r => r.playerId === s.playerId);
+        s.payoutWon = (raw && raw.stablefordWon) || 0;
+      }
+    } else {
+      const payouts = calcCompetitionPayouts(scores);
+      for (const s of scores) s.payoutWon = payouts[s.playerId] || 0;
+    }
 
     const round = {
       id: genId(),
