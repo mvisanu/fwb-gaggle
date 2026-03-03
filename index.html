@@ -1023,6 +1023,9 @@ h1, h2, h3, .heading {
   <div class="content-panel">
     <label for="roundDate" style="font-size:0.85rem;margin-bottom:6px;display:block;color:var(--text-muted)">Round Date</label>
     <input type="date" id="roundDate" class="date-input" style="margin-bottom:16px">
+    <div id="scoreEntryNotPlaying" style="display:none;margin-bottom:8px">
+      <button class="lb-show-all" onclick="scoreEntryShowAll()" id="scoreEntryShowBtn"></button>
+    </div>
     <div id="scoreEntryList"></div>
     <div style="display:flex;gap:10px;margin-top:16px">
       <button class="btn btn-secondary btn-full" onclick="showScreen('screenDashboard')">Cancel</button>
@@ -1047,6 +1050,19 @@ h1, h2, h3, .heading {
   <h2 class="section-title">Handicap Reference</h2>
   <div style="overflow-x:auto">
     <table class="ref-table" id="hdcpRefTable"></table>
+  </div>
+
+  <h2 class="section-title">Competition</h2>
+  <div class="payout-calc" style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+    <div>
+      <label class="settings-label">Buy-in per player ($)</label>
+      <input type="number" inputmode="decimal" id="competitionBuyinInput" class="score-input" style="width:80px" min="0.5" step="0.5" oninput="saveCompetitionBuyin()">
+    </div>
+    <div style="font-size:0.8rem;color:var(--text-muted);line-height:1.6">
+      Auto-applied when saving rounds:<br>
+      &lt;8 players → 1st place 100%<br>
+      8+ players → 1st 60%, 2nd 40%
+    </div>
   </div>
 
   <h2 class="section-title">Payout Calculator</h2>
@@ -1307,6 +1323,31 @@ function genId() {
   });
 }
 
+function getCompetitionBuyin() {
+  return parseFloat(localStorage.getItem(lsKey('competitionBuyin')) || '5');
+}
+
+function saveCompetitionBuyin() {
+  const val = parseFloat(document.getElementById('competitionBuyinInput').value);
+  if (!isNaN(val) && val > 0) localStorage.setItem(lsKey('competitionBuyin'), val.toString());
+}
+
+// Returns { playerId: payoutAmount } for the round based on player count and buy-in
+function calcCompetitionPayouts(scores) {
+  const n = scores.length;
+  if (n === 0) return {};
+  const pot = n * getCompetitionBuyin();
+  const sorted = [...scores].sort((a, b) => b.netScore - a.netScore || a.hdcpBefore - b.hdcpBefore);
+  const result = {};
+  if (n < 8) {
+    result[sorted[0].playerId] = Math.round(pot * 100) / 100;
+  } else {
+    result[sorted[0].playerId] = Math.round(pot * 0.6 * 100) / 100;
+    if (sorted[1]) result[sorted[1].playerId] = Math.round(pot * 0.4 * 100) / 100;
+  }
+  return result;
+}
+
 function initDB() {
   return new Promise((resolve) => {
     if (!window.indexedDB) { useLocalStorage = true; resolve(); return; }
@@ -1443,6 +1484,7 @@ async function fullRecalculate() {
     p.wins = 0;
     p.skinsWinnings = 0;
     p.greenyWinnings = 0;
+    p.payoutWinnings = 0;
   }
 
   // Sort rounds chronologically
@@ -1469,6 +1511,14 @@ async function fullRecalculate() {
         winnerId = score.playerId;
         winnerHdcp = score.hdcpBefore;
       }
+    }
+
+    // Calculate and store competition payouts for this round
+    const payouts = calcCompetitionPayouts(round.scores);
+    for (const score of round.scores) {
+      score.payoutWon = payouts[score.playerId] || 0;
+      const player = players.find(p => p.id === score.playerId);
+      if (player) player.payoutWinnings = (player.payoutWinnings || 0) + score.payoutWon;
     }
 
     round.winnerId = winnerId;
@@ -1613,6 +1663,11 @@ function leaderboardExpandAll() {
   renderLeaderboard();
 }
 
+function scoreEntryShowAll() {
+  document.querySelectorAll('#scoreEntryList .score-row-hidden').forEach(el => el.style.display = '');
+  document.getElementById('scoreEntryNotPlaying').style.display = 'none';
+}
+
 function renderLeaderboard() {
   // Render header
   const head = document.getElementById('leaderboardHead');
@@ -1751,11 +1806,17 @@ const PIE_COLORS = ['#d4af37','#4ade80','#60a5fa','#f472b6','#fb923c','#a78bfa',
 function renderWinningsPieChart(players) {
   const div = document.getElementById('winningsPieChart');
   const data = players
-    .map(p => ({ name: p.name, skins: p.skinsWinnings || 0, greeny: p.greenyWinnings || 0, total: (p.skinsWinnings || 0) + (p.greenyWinnings || 0) }))
+    .map(p => ({
+      name: p.name,
+      payout: p.payoutWinnings || 0,
+      skins: p.skinsWinnings || 0,
+      greeny: p.greenyWinnings || 0,
+      total: (p.payoutWinnings || 0) + (p.skinsWinnings || 0) + (p.greenyWinnings || 0)
+    }))
     .filter(p => p.total > 0)
     .sort((a, b) => b.total - a.total);
   if (data.length === 0) {
-    div.innerHTML = '<div class="chart-empty">No winnings recorded yet — enter Skins $ or Greeny $ when saving rounds</div>';
+    div.innerHTML = '<div class="chart-empty">No winnings recorded yet</div>';
     return;
   }
   const grandTotal = data.reduce((s, p) => s + p.total, 0);
@@ -1770,7 +1831,7 @@ function renderWinningsPieChart(players) {
   }).join('');
   const legend = data.map((p, i) =>
     `<div class="pie-legend-item"><div class="pie-dot" style="background:${PIE_COLORS[i % PIE_COLORS.length]}"></div>` +
-    `<span><strong>${esc(p.name)}</strong> $${p.total} <span style="color:var(--text-dark);font-size:0.75rem">(Skins $${p.skins} / Greeny $${p.greeny})</span></span></div>`
+    `<span><strong>${esc(p.name)}</strong> $${p.total} <span style="color:var(--text-dark);font-size:0.75rem">(Comp $${p.payout} / Skins $${p.skins} / Greeny $${p.greeny})</span></span></div>`
   ).join('');
   div.innerHTML = `<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">` +
     `<svg viewBox="0 0 160 160" style="width:150px;height:150px;flex-shrink:0">${slices}</svg>` +
@@ -1834,8 +1895,10 @@ async function renderScoreEntry() {
   const active = players.filter(p => p.active).sort((a, b) => a.name.localeCompare(b.name));
 
   const list = document.getElementById('scoreEntryList');
-  list.innerHTML = active.map(p => `
-    <div class="score-row">
+  list.innerHTML = active.map(p => {
+    const notPlaying = _collapsedIds.has(p.id);
+    return `
+    <div class="score-row${notPlaying ? ' score-row-hidden' : ''}" style="${notPlaying ? 'display:none' : ''}">
       <div class="score-player">
         <div class="score-player-name">${esc(p.name)}</div>
         <div class="score-player-hdcp">Hdcp: ${p.currentHdcp}</div>
@@ -1846,8 +1909,18 @@ async function renderScoreEntry() {
         <label class="score-extra-label"><span>Skins $</span><input type="number" inputmode="decimal" class="skins-input money-input" data-player-id="${p.id}" placeholder="0" min="0" step="0.5"></label>
         <label class="score-extra-label"><span>Greeny $</span><input type="number" inputmode="decimal" class="greeny-input money-input" data-player-id="${p.id}" placeholder="0" min="0" step="0.5"></label>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
+
+  const hiddenCount = active.filter(p => _collapsedIds.has(p.id)).length;
+  const toolbar = document.getElementById('scoreEntryNotPlaying');
+  const btn = document.getElementById('scoreEntryShowBtn');
+  if (hiddenCount > 0) {
+    btn.textContent = hiddenCount + ' not playing — Show All';
+    toolbar.style.display = 'block';
+  } else {
+    toolbar.style.display = 'none';
+  }
 }
 
 function previewScore(input) {
@@ -1923,6 +1996,10 @@ async function saveRound() {
 
     const winnerPlayer = players.find(p => p.id === winnerId);
 
+    // Calculate competition payouts
+    const payouts = calcCompetitionPayouts(scores);
+    for (const s of scores) s.payoutWon = payouts[s.playerId] || 0;
+
     const round = {
       id: genId(),
       date,
@@ -1946,6 +2023,7 @@ async function saveRound() {
           if (p.id === winnerId) p.wins++;
           p.skinsWinnings = (p.skinsWinnings || 0) + (s.skinsWon || 0);
           p.greenyWinnings = (p.greenyWinnings || 0) + (s.greenyWon || 0);
+          p.payoutWinnings = (p.payoutWinnings || 0) + (s.payoutWon || 0);
           await putPlayer(p);
         }
       }
@@ -1981,6 +2059,7 @@ async function renderHistory() {
   div.innerHTML = rounds.map(r => {
     const d = new Date(r.date + 'T00:00:00');
     const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const hasPayout = r.scores.some(s => s.payoutWon > 0);
     const hasSkins = r.scores.some(s => s.skinsWon > 0);
     const hasGreeny = r.scores.some(s => s.greenyWon > 0);
     const detailRows = r.scores
@@ -1995,6 +2074,7 @@ async function renderHistory() {
           <td>${s.netScore >= 0 ? '+' : ''}${s.netScore}</td>
           <td>${s.hdcpBefore} &#8594; ${s.hdcpAfter}</td>
           <td>${changeStr}</td>
+          ${hasPayout ? `<td style="color:var(--primary);font-weight:600">${s.payoutWon > 0 ? '$' + s.payoutWon : '—'}</td>` : ''}
           ${hasSkins ? `<td style="color:var(--gold)">${s.skinsWon > 0 ? '$' + s.skinsWon : '—'}</td>` : ''}
           ${hasGreeny ? `<td style="color:var(--green-good)">${s.greenyWon > 0 ? '$' + s.greenyWon : '—'}</td>` : ''}
         </tr>`;
@@ -2013,7 +2093,7 @@ async function renderHistory() {
       </div>
       <div class="round-detail">
         <table>
-          <thead><tr><th>Player</th><th>Pts</th><th>Net</th><th>Hdcp</th><th>+/-</th>${hasSkins ? '<th style="color:var(--gold)">Skins</th>' : ''}${hasGreeny ? '<th style="color:var(--green-good)">Greeny</th>' : ''}</tr></thead>
+          <thead><tr><th>Player</th><th>Pts</th><th>Net</th><th>Hdcp</th><th>+/-</th>${hasPayout ? '<th style="color:var(--primary)">Comp</th>' : ''}${hasSkins ? '<th style="color:var(--gold)">Skins</th>' : ''}${hasGreeny ? '<th style="color:var(--green-good)">Greeny</th>' : ''}</tr></thead>
           <tbody>${detailRows}</tbody>
         </table>
         <button class="delete-round-btn" onclick="confirmDeleteRound('${r.id}')">Delete Round</button>
@@ -2180,6 +2260,9 @@ async function doDeletePlayer(playerId) {
 // SETTINGS
 // ========================================
 function renderSettings() {
+  const buyinEl = document.getElementById('competitionBuyinInput');
+  if (buyinEl) buyinEl.value = getCompetitionBuyin();
+
   // Handicap reference table
   const table = document.getElementById('hdcpRefTable');
   let rows = '<thead><tr><th>Hdcp</th><th>Expected Pts</th></tr></thead><tbody>';
