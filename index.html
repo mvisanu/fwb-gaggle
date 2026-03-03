@@ -3367,6 +3367,12 @@ async function init() {
     document.getElementById('beltBar').style.display = 'none';
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screenAdmin').classList.add('active');
+    if (FIREBASE_CONFIG) {
+      try {
+        firebase.initializeApp(FIREBASE_CONFIG);
+        firestoreDB = firebase.firestore();
+      } catch(e) { console.error('Firebase admin init error:', e); }
+    }
     renderAdmin();
     return;
   }
