@@ -9,6 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1187,6 +1189,7 @@ h1, h2, h3, .heading {
     <button class="btn btn-secondary btn-full" onclick="requirePin(()=>confirmClearRounds())" style="border-color:var(--red-bad);color:var(--red-bad)">Clear Round Data</button>
     <button class="btn btn-secondary btn-full" onclick="requirePin(()=>confirmSampleData())" style="border-color:var(--gold);color:var(--gold)">Load Sample Data</button>
     <button class="btn btn-danger btn-full" onclick="requirePin(()=>confirmReset())">Reset All Data</button>
+    <div id="fsMigrateSection"></div>
   </div>
 </div>
 
@@ -1299,6 +1302,45 @@ h1, h2, h3, .heading {
 
 <script>
 // ========================================
+// FIREBASE / FIRESTORE CONFIG
+// ========================================
+// Paste your Firebase config object here to enable real-time sync across devices.
+// Set to null (default) to use local IndexedDB only.
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCxdth4n5NIydrrSdkY-KqSdL-6l94gzdg",
+  authDomain: "stablefordgolf-7e12e.firebaseapp.com",
+  projectId: "stablefordgolf-7e12e",
+  storageBucket: "stablefordgolf-7e12e.firebasestorage.app",
+  messagingSenderId: "101773494241",
+  appId: "1:101773494241:web:7092332bac8e807e0eb4a0",
+  measurementId: "G-6QSLR8HQTJ"
+};
+
+let firestoreDB = null;
+let _fsPlayers = null;    // Array<player> cache; null = not yet loaded
+let _fsRounds  = null;    // Array<round> cache
+let _fsSettings = {};     // { beltHolder, editorPin, skinsRate, greenyRate, competitionBuyin }
+let _fsListenersAttached = false;
+let _suppressRender = false; // prevents listener re-renders during batch writes
+
+function fsPlayersCol()  { return firestoreDB.collection('groups').doc(GROUP).collection('players'); }
+function fsRoundsCol()   { return firestoreDB.collection('groups').doc(GROUP).collection('rounds'); }
+function fsSettingsDoc() { return firestoreDB.collection('groups').doc(GROUP).collection('meta').doc('settings'); }
+
+// Re-render whichever screen is currently visible (skip Enter Round to avoid disrupting input)
+function _renderCurrentScreen() {
+  if (_suppressRender) return;
+  const active = document.querySelector('.screen.active');
+  if (!active) return;
+  const id = active.id;
+  if (id === 'screenDashboard') renderDashboard();
+  else if (id === 'screenHistory') renderHistory();
+  else if (id === 'screenPlayers') renderPlayers();
+  else if (id === 'screenSettings') renderSettings();
+  // screenEnterRound intentionally skipped
+}
+
+// ========================================
 // DATABASE LAYER
 // ========================================
 // Multi-group support: ?group=monday (default) | ?group=saturday | etc.
@@ -1332,25 +1374,46 @@ function genId() {
 }
 
 function getCompetitionBuyin() {
+  if (firestoreDB) return parseFloat(_fsSettings.competitionBuyin || 5);
   return parseFloat(localStorage.getItem(lsKey('competitionBuyin')) || '5');
 }
 function saveCompetitionBuyin() {
   const val = parseFloat(document.getElementById('competitionBuyinInput').value);
-  if (!isNaN(val) && val > 0) localStorage.setItem(lsKey('competitionBuyin'), val.toString());
+  if (isNaN(val) || val <= 0) return;
+  if (firestoreDB) {
+    _fsSettings.competitionBuyin = val;
+    fsSettingsDoc().set({ competitionBuyin: val }, { merge: true }).catch(e => console.error(e));
+  } else {
+    localStorage.setItem(lsKey('competitionBuyin'), val.toString());
+  }
 }
 function getSkinsRate() {
+  if (firestoreDB) return parseFloat(_fsSettings.skinsRate || 1);
   return parseFloat(localStorage.getItem(lsKey('skinsRate')) || '1');
 }
 function saveSkinsRate() {
   const val = parseFloat(document.getElementById('skinsRateInput').value);
-  if (!isNaN(val) && val > 0) localStorage.setItem(lsKey('skinsRate'), val.toString());
+  if (isNaN(val) || val <= 0) return;
+  if (firestoreDB) {
+    _fsSettings.skinsRate = val;
+    fsSettingsDoc().set({ skinsRate: val }, { merge: true }).catch(e => console.error(e));
+  } else {
+    localStorage.setItem(lsKey('skinsRate'), val.toString());
+  }
 }
 function getGreenyRate() {
+  if (firestoreDB) return parseFloat(_fsSettings.greenyRate || 1);
   return parseFloat(localStorage.getItem(lsKey('greenyRate')) || '1');
 }
 function saveGreenyRate() {
   const val = parseFloat(document.getElementById('greenyRateInput').value);
-  if (!isNaN(val) && val > 0) localStorage.setItem(lsKey('greenyRate'), val.toString());
+  if (isNaN(val) || val <= 0) return;
+  if (firestoreDB) {
+    _fsSettings.greenyRate = val;
+    fsSettingsDoc().set({ greenyRate: val }, { merge: true }).catch(e => console.error(e));
+  } else {
+    localStorage.setItem(lsKey('greenyRate'), val.toString());
+  }
 }
 
 // Returns { playerId: payoutAmount } for the round based on player count and buy-in
@@ -1370,16 +1433,71 @@ function calcCompetitionPayouts(scores) {
 }
 
 function initDB() {
+  return new Promise(async (resolve) => {
+    // --- Firestore mode ---
+    if (FIREBASE_CONFIG) {
+      try {
+        firebase.initializeApp(FIREBASE_CONFIG);
+        firestoreDB = firebase.firestore();
+        try { await firestoreDB.enablePersistence({ synchronizeTabs: true }); } catch(e) { /* non-fatal */ }
+        await _attachFirestoreListeners();
+      } catch(e) {
+        console.error('Firestore init failed, falling back to IndexedDB:', e);
+        firestoreDB = null;
+        _initIDB(resolve);
+        return;
+      }
+      resolve();
+      return;
+    }
+    // --- Local IndexedDB / localStorage mode ---
+    _initIDB(resolve);
+  });
+}
+
+function _initIDB(resolve) {
+  if (!window.indexedDB) { useLocalStorage = true; resolve(); return; }
+  const req = indexedDB.open(DB_NAME, DB_VERSION);
+  req.onerror = () => { useLocalStorage = true; resolve(); };
+  req.onupgradeneeded = (e) => {
+    const d = e.target.result;
+    if (!d.objectStoreNames.contains('players')) d.createObjectStore('players', { keyPath: 'id' });
+    if (!d.objectStoreNames.contains('rounds')) d.createObjectStore('rounds', { keyPath: 'id' });
+  };
+  req.onsuccess = (e) => { db = e.target.result; resolve(); };
+}
+
+function _attachFirestoreListeners() {
   return new Promise((resolve) => {
-    if (!window.indexedDB) { useLocalStorage = true; resolve(); return; }
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onerror = () => { useLocalStorage = true; resolve(); };
-    req.onupgradeneeded = (e) => {
-      const d = e.target.result;
-      if (!d.objectStoreNames.contains('players')) d.createObjectStore('players', { keyPath: 'id' });
-      if (!d.objectStoreNames.contains('rounds')) d.createObjectStore('rounds', { keyPath: 'id' });
-    };
-    req.onsuccess = (e) => { db = e.target.result; resolve(); };
+    if (_fsListenersAttached) { resolve(); return; }
+    _fsListenersAttached = true;
+    let playersReady = false, roundsReady = false, settingsReady = false;
+    function checkReady() { if (playersReady && roundsReady && settingsReady) resolve(); }
+
+    fsPlayersCol().onSnapshot(snap => {
+      _fsPlayers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (!playersReady) { playersReady = true; checkReady(); }
+      else _renderCurrentScreen();
+    }, err => { console.error('Players snapshot error:', err); if (!playersReady) { playersReady = true; checkReady(); } });
+
+    fsRoundsCol().onSnapshot(snap => {
+      _fsRounds = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (!roundsReady) { roundsReady = true; checkReady(); }
+      else _renderCurrentScreen();
+    }, err => { console.error('Rounds snapshot error:', err); if (!roundsReady) { roundsReady = true; checkReady(); } });
+
+    fsSettingsDoc().onSnapshot(snap => {
+      if (snap.exists) {
+        _fsSettings = snap.data();
+      } else {
+        // First-time: write defaults to Firestore
+        const defaults = { beltHolder: 'Josh', editorPin: '2026', skinsRate: 1, greenyRate: 1, competitionBuyin: 5 };
+        fsSettingsDoc().set(defaults).catch(e => console.error('Settings init error:', e));
+        _fsSettings = { ...defaults };
+      }
+      if (!settingsReady) { settingsReady = true; checkReady(); }
+      else { renderBeltHolder(); }
+    }, err => { console.error('Settings snapshot error:', err); if (!settingsReady) { settingsReady = true; checkReady(); } });
   });
 }
 
@@ -1418,14 +1536,31 @@ function idbClear(store) {
 
 // Unified data access
 async function getPlayers() {
+  if (firestoreDB) {
+    if (_fsPlayers !== null) return [..._fsPlayers];
+    const snap = await fsPlayersCol().get();
+    _fsPlayers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    return [..._fsPlayers];
+  }
   if (useLocalStorage) return JSON.parse(localStorage.getItem(lsKey('fwb_players')) || '[]');
   return idbGetAll('players');
 }
 async function getRounds() {
+  if (firestoreDB) {
+    if (_fsRounds !== null) return [..._fsRounds];
+    const snap = await fsRoundsCol().get();
+    _fsRounds = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    return [..._fsRounds];
+  }
   if (useLocalStorage) return JSON.parse(localStorage.getItem(lsKey('fwb_rounds')) || '[]');
   return idbGetAll('rounds');
 }
 async function putPlayer(p) {
+  if (firestoreDB) {
+    const { id, ...data } = p;
+    await fsPlayersCol().doc(id).set(data);
+    return;
+  }
   if (useLocalStorage) {
     const all = await getPlayers();
     const idx = all.findIndex(x => x.id === p.id);
@@ -1436,6 +1571,11 @@ async function putPlayer(p) {
   return idbPut('players', p);
 }
 async function putRound(r) {
+  if (firestoreDB) {
+    const { id, ...data } = r;
+    await fsRoundsCol().doc(id).set(data);
+    return;
+  }
   if (useLocalStorage) {
     const all = await getRounds();
     const idx = all.findIndex(x => x.id === r.id);
@@ -1446,6 +1586,10 @@ async function putRound(r) {
   return idbPut('rounds', r);
 }
 async function deleteRound(id) {
+  if (firestoreDB) {
+    await fsRoundsCol().doc(id).delete();
+    return;
+  }
   if (useLocalStorage) {
     const all = await getRounds();
     localStorage.setItem(lsKey('fwb_rounds'), JSON.stringify(all.filter(x => x.id !== id)));
@@ -1454,6 +1598,10 @@ async function deleteRound(id) {
   return idbDelete('rounds', id);
 }
 async function deletePlayer(id) {
+  if (firestoreDB) {
+    await fsPlayersCol().doc(id).delete();
+    return;
+  }
   if (useLocalStorage) {
     const all = await getPlayers();
     localStorage.setItem(lsKey('fwb_players'), JSON.stringify(all.filter(x => x.id !== id)));
@@ -1462,6 +1610,16 @@ async function deletePlayer(id) {
   return idbDelete('players', id);
 }
 async function clearAll() {
+  if (firestoreDB) {
+    const [pSnap, rSnap] = await Promise.all([fsPlayersCol().get(), fsRoundsCol().get()]);
+    const batch = firestoreDB.batch();
+    pSnap.docs.forEach(d => batch.delete(d.ref));
+    rSnap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+    _fsPlayers = [];
+    _fsRounds = [];
+    return;
+  }
   if (useLocalStorage) {
     localStorage.removeItem(lsKey('fwb_players'));
     localStorage.removeItem(lsKey('fwb_rounds'));
@@ -1547,10 +1705,22 @@ async function fullRecalculate() {
     round.winnerName = winnerPlayer ? winnerPlayer.name : '';
     if (winnerPlayer) winnerPlayer.wins++;
 
-    await putRound(round);
+    if (!firestoreDB) await putRound(round);
   }
 
-  for (const p of players) await putPlayer(p);
+  if (firestoreDB) {
+    _suppressRender = true;
+    try {
+      const batch = firestoreDB.batch();
+      for (const p of players) { const { id, ...data } = p; batch.set(fsPlayersCol().doc(id), data); }
+      for (const r of rounds)  { const { id, ...data } = r; batch.set(fsRoundsCol().doc(id),  data); }
+      await batch.commit();
+      _fsPlayers = [...players];
+      _fsRounds  = [...rounds];
+    } finally { _suppressRender = false; }
+  } else {
+    for (const p of players) await putPlayer(p);
+  }
   updateBeltHolderFromRounds(rounds);
   renderBeltHolder();
 }
@@ -1559,10 +1729,16 @@ async function fullRecalculate() {
 // BELT HOLDER
 // ========================================
 function getBeltHolder() {
+  if (firestoreDB) return _fsSettings.beltHolder || 'Josh';
   return localStorage.getItem(lsKey('beltHolder')) || 'Josh';
 }
 function setBeltHolder(name) {
-  localStorage.setItem(lsKey('beltHolder'), name);
+  if (firestoreDB) {
+    _fsSettings.beltHolder = name;
+    fsSettingsDoc().set({ beltHolder: name }, { merge: true }).catch(e => console.error(e));
+  } else {
+    localStorage.setItem(lsKey('beltHolder'), name);
+  }
 }
 function isMondayDate(dateStr) {
   return new Date(dateStr + 'T00:00:00').getDay() === 1;
@@ -2319,6 +2495,47 @@ function renderSettings() {
   renderGreenyPlayers();
   renderPinSection();
   renderAutoBackupInfo();
+  renderFsMigrateSection();
+}
+
+function renderFsMigrateSection() {
+  const el = document.getElementById('fsMigrateSection');
+  if (!el) return;
+  if (!firestoreDB || localStorage.getItem(lsKey('fsMigrated'))) { el.innerHTML = ''; return; }
+  el.innerHTML = `<button class="btn btn-secondary btn-full" style="border-color:var(--primary);color:var(--primary);margin-top:4px" onclick="requirePin(migrateLocalToFirestore)">Migrate local data → Firestore</button>`;
+}
+
+async function migrateLocalToFirestore() {
+  if (!firestoreDB) return;
+  if (!confirm('Copy all local IndexedDB data to Firestore? This will overwrite any existing Firestore data for this group.')) return;
+  toast('Migrating…');
+  try {
+    // Read from IDB directly (bypass Firestore cache)
+    let lPlayers = [], lRounds = [];
+    if (db) {
+      lPlayers = await idbGetAll('players');
+      lRounds = await idbGetAll('rounds');
+    } else if (useLocalStorage) {
+      lPlayers = JSON.parse(localStorage.getItem(lsKey('fwb_players')) || '[]');
+      lRounds  = JSON.parse(localStorage.getItem(lsKey('fwb_rounds'))  || '[]');
+    }
+    // Batch write in chunks of 500 (Firestore limit)
+    const ops = [
+      ...lPlayers.map(p => ({ col: fsPlayersCol(), id: p.id, data: (({ id, ...d }) => d)(p) })),
+      ...lRounds.map(r  => ({ col: fsRoundsCol(),  id: r.id, data: (({ id, ...d }) => d)(r) }))
+    ];
+    for (let i = 0; i < ops.length; i += 500) {
+      const batch = firestoreDB.batch();
+      ops.slice(i, i + 500).forEach(op => batch.set(op.col.doc(op.id), op.data));
+      await batch.commit();
+    }
+    localStorage.setItem(lsKey('fsMigrated'), '1');
+    toast('Migration complete — ' + lPlayers.length + ' players, ' + lRounds.length + ' rounds synced');
+    renderFsMigrateSection();
+  } catch(e) {
+    console.error('Migration failed:', e);
+    toast('Migration failed — see console');
+  }
 }
 
 // ========================================
@@ -2358,25 +2575,37 @@ async function renderAdmin() {
     div.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:24px">No groups yet. Create one below.</div>';
   } else {
     const items = await Promise.all(groups.map(async g => {
-      const dbName = g === 'monday' ? 'fwbGaggle' : 'fwbGaggle-' + g;
       let players = 0, rounds = 0, lastDate = '—';
       try {
-        await new Promise((res, rej) => {
-          const r = indexedDB.open(dbName, 1);
-          r.onsuccess = e => {
-            const d = e.target.result;
-            const tx = d.transaction(['players','rounds'], 'readonly');
-            tx.objectStore('players').count().onsuccess = pe => { players = pe.target.result; };
-            tx.objectStore('rounds').getAll().onsuccess = re => {
-              const rs = re.target.result || [];
-              rounds = rs.length;
-              if (rs.length) lastDate = rs.sort((a,b) => b.date.localeCompare(a.date))[0].date;
-              d.close(); res();
+        if (firestoreDB) {
+          const dbFs = firebase.firestore();
+          const [pSnap, rSnap] = await Promise.all([
+            dbFs.collection('groups').doc(g).collection('players').get(),
+            dbFs.collection('groups').doc(g).collection('rounds').get()
+          ]);
+          players = pSnap.size;
+          rounds = rSnap.size;
+          const rs = rSnap.docs.map(d => d.data());
+          if (rs.length) lastDate = rs.sort((a,b) => b.date.localeCompare(a.date))[0].date;
+        } else {
+          const dbName = g === 'monday' ? 'fwbGaggle' : 'fwbGaggle-' + g;
+          await new Promise((res, rej) => {
+            const r = indexedDB.open(dbName, 1);
+            r.onsuccess = e => {
+              const d = e.target.result;
+              const tx = d.transaction(['players','rounds'], 'readonly');
+              tx.objectStore('players').count().onsuccess = pe => { players = pe.target.result; };
+              tx.objectStore('rounds').getAll().onsuccess = re => {
+                const rs = re.target.result || [];
+                rounds = rs.length;
+                if (rs.length) lastDate = rs.sort((a,b) => b.date.localeCompare(a.date))[0].date;
+                d.close(); res();
+              };
+              tx.onerror = rej;
             };
-            tx.onerror = rej;
-          };
-          r.onerror = rej;
-        });
+            r.onerror = rej;
+          });
+        }
       } catch(e) {}
       const label = localStorage.getItem('groupLabel-' + g) || (g.charAt(0).toUpperCase() + g.slice(1) + ' Gaggle');
       const url = window.location.pathname + '?group=' + g;
@@ -2936,9 +3165,27 @@ let _pinEntered = '';
 let _pinOnComplete = null;
 let _pinFirstEntry = '';
 
-function getPinHash()    { return localStorage.getItem(lsKey('editorPin')) || ''; }
-function setPinHash(pin) { localStorage.setItem(lsKey('editorPin'), pin); }
-function removePin()     { localStorage.removeItem(lsKey('editorPin')); sessionUnlocked = false; closeModal(); toast('Editor PIN removed'); renderPinSection(); }
+function getPinHash() {
+  if (firestoreDB) return _fsSettings.editorPin || '';
+  return localStorage.getItem(lsKey('editorPin')) || '';
+}
+function setPinHash(pin) {
+  if (firestoreDB) {
+    _fsSettings.editorPin = pin;
+    fsSettingsDoc().set({ editorPin: pin }, { merge: true }).catch(e => console.error(e));
+  } else {
+    localStorage.setItem(lsKey('editorPin'), pin);
+  }
+}
+function removePin() {
+  if (firestoreDB) {
+    _fsSettings.editorPin = '';
+    fsSettingsDoc().set({ editorPin: '' }, { merge: true }).catch(e => console.error(e));
+  } else {
+    localStorage.removeItem(lsKey('editorPin'));
+  }
+  sessionUnlocked = false; closeModal(); toast('Editor PIN removed'); renderPinSection();
+}
 function isPinSet()      { return !!getPinHash(); }
 
 function requirePin(callback) {
@@ -3129,14 +3376,18 @@ async function init() {
   // Register this group for admin discovery
   registerGroup();
 
-  // Set default Editor PIN (2026) on first load if none exists
-  if (!getPinHash()) setPinHash('2026');
+  if (!firestoreDB) {
+    // Set default Editor PIN (2026) on first load if none exists (local mode only;
+    // Firestore mode writes defaults via settings listener on first run)
+    if (!getPinHash()) setPinHash('2026');
 
-  // One-time reset when DATA_VERSION changes — clears to default players, no rounds
-  if (localStorage.getItem(lsKey('dataVersion')) !== DATA_VERSION) {
-    await clearAll();
-    localStorage.setItem(lsKey('beltHolder'), 'Josh');
-    localStorage.setItem(lsKey('dataVersion'), DATA_VERSION);
+    // One-time reset when DATA_VERSION changes — clears to default players, no rounds.
+    // Guard: never wipe Firestore data on a version bump (would erase shared data for everyone).
+    if (localStorage.getItem(lsKey('dataVersion')) !== DATA_VERSION) {
+      await clearAll();
+      localStorage.setItem(lsKey('beltHolder'), 'Josh');
+      localStorage.setItem(lsKey('dataVersion'), DATA_VERSION);
+    }
   }
 
   renderBeltHolder();
