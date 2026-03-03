@@ -2319,6 +2319,8 @@ async function openEditPlayerModal(playerId) {
     <h3>Edit Player</h3>
     <label>Name</label>
     <input type="text" id="modalPlayerName" value="${esc(p.name)}">
+    <label>Starting Handicap</label>
+    <input type="number" inputmode="numeric" id="modalPlayerStartHdcp" value="${p.startingHdcp}" min="0" max="54">
     <label>Current Handicap</label>
     <input type="number" inputmode="numeric" id="modalPlayerHdcp" value="${p.currentHdcp}" min="0" max="54">
     <div class="modal-actions">
@@ -2330,14 +2332,17 @@ async function openEditPlayerModal(playerId) {
 
 async function doEditPlayer(playerId) {
   const name = document.getElementById('modalPlayerName').value.trim();
+  const startHdcp = parseInt(document.getElementById('modalPlayerStartHdcp').value);
   const hdcp = parseInt(document.getElementById('modalPlayerHdcp').value);
   if (!name) { toast('Enter a name'); return; }
+  if (isNaN(startHdcp) || startHdcp < 0) { toast('Enter a valid starting handicap'); return; }
   if (isNaN(hdcp) || hdcp < 0) { toast('Enter a valid handicap'); return; }
 
   const players = await getPlayers();
   const p = players.find(x => x.id === playerId);
   if (!p) return;
   p.name = name;
+  p.startingHdcp = startHdcp;
   p.currentHdcp = hdcp;
   await putPlayer(p);
   closeModal();
