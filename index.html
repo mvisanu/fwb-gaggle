@@ -282,8 +282,8 @@ h1, h2, h3, .heading {
   font-weight: 900;
   line-height: 1;
 }
-.form-dot.down { background: var(--green-good-on-light); color: #fff; }
-.form-dot.up   { background: var(--red-bad-on-light);   color: #fff; }
+.form-dot.down { background: var(--red-bad-on-light);   color: #fff; }
+.form-dot.up   { background: var(--green-good-on-light); color: #fff; }
 .form-dot.same { background: #cbd5e1; color: #64748b; font-size: 13px; font-weight: 700; }
 
 /* --- Trend Rows --- */
@@ -1000,8 +1000,8 @@ h1, h2, h3, .heading {
 
     <h2 class="section-title">Form Guide</h2>
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;font-size:0.78rem;color:var(--text-dark)">
-      <span style="display:flex;align-items:center;gap:5px"><span class="form-dot down">&#8593;</span> Hdcp dropped (played well)</span>
-      <span style="display:flex;align-items:center;gap:5px"><span class="form-dot up">&#8595;</span> Hdcp went up (below par)</span>
+      <span style="display:flex;align-items:center;gap:5px"><span class="form-dot up">&#8593;</span> Hdcp went up (played well)</span>
+      <span style="display:flex;align-items:center;gap:5px"><span class="form-dot down">&#8595;</span> Hdcp dropped (below par)</span>
       <span style="display:flex;align-items:center;gap:5px"><span class="form-dot same">&minus;</span> No change</span>
     </div>
     <div id="tabForm" style="margin-bottom:20px">
@@ -1811,7 +1811,7 @@ function renderFormGuide(players, rounds) {
         if (!s) return '';
         const diff = s.hdcpAfter - s.hdcpBefore;
         const cls = diff < 0 ? 'down' : diff > 0 ? 'up' : 'same';
-        const icon = diff < 0 ? '&#8593;' : diff > 0 ? '&#8595;' : '&minus;';
+        const icon = diff < 0 ? '&#8595;' : diff > 0 ? '&#8593;' : '&minus;';
         return `<span class="form-dot ${cls}" title="${r.date}: ${s.actual}pts (${diff >= 0 ? '+' : ''}${diff})">${icon}</span>`;
       }).join('');
       return `<div class="trend-row">
@@ -1862,7 +1862,7 @@ function previewScore(input) {
   const newHdcp = calcHandicap(hdcp, actual);
   const net = actual - hdcp;
   const diff = newHdcp - hdcp;
-  const color = diff < 0 ? 'var(--green-good)' : diff > 0 ? 'var(--red-bad)' : 'var(--gray)';
+  const color = diff > 0 ? 'var(--green-good)' : diff < 0 ? 'var(--red-bad)' : 'var(--gray)';
   const arrow = diff < 0 ? '&#9660;' : diff > 0 ? '&#9650;' : '—';
 
   previewEl.innerHTML = `
