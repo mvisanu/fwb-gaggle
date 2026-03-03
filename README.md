@@ -132,6 +132,7 @@ Tap **Players** to:
 | **Clear Round Data** | Wipes all rounds and resets player stats to starting handicaps (PIN protected) |
 | **Load Sample Data** | Loads 6 demo rounds so you can preview all charts (PIN protected) |
 | **Reset All Data** | Wipes everything and restores the 16 default players (double-confirmed, PIN protected) |
+| **Migrate local data → Firestore** | Copies existing local IndexedDB data to Firestore (visible only when Firestore is configured and migration hasn't run). PIN protected. |
 
 ---
 
@@ -162,11 +163,13 @@ Tap the **❓ Help & FAQ** button at the bottom of the dashboard to open the in-
 ## Technical Notes
 
 - **Single file** — everything is in `index.html` (HTML, CSS, JS). No server, no build tools.
-- **Storage** — IndexedDB (primary) with localStorage fallback. Data persists across browser sessions.
+- **Storage** — Firebase Firestore (primary, real-time sync across all devices) with IndexedDB local fallback. Set `FIREBASE_CONFIG = null` in the script to revert to fully local IndexedDB mode.
+- **Real-time sync** — all players, rounds, belt holder, PIN, and settings are stored in Firestore under `groups/{GROUP}/`. Changes on one device appear instantly on all others via `onSnapshot` listeners.
+- **Offline** — Firestore offline persistence is enabled (`enablePersistence({ synchronizeTabs: true })`). Rounds saved offline are queued and synced automatically when connectivity returns.
 - **Multi-group** — `?group=<key>` in URL isolates all data per group. Key is a 16-char random hex string — the URL itself controls view access. Create groups via admin view (`?admin=1`). Monday uses original key names for backward compatibility.
-- **Belt champion** — stored in `localStorage` key `beltHolder` (or `<group>-beltHolder`). Defaults to `"Josh"`.
-- **Data versioning** — a `DATA_VERSION` constant triggers a one-time clean reset when bumped on deploy.
-- **Offline** — fully functional without internet after first load. Only Google Fonts requires a connection (degrades gracefully).
+- **Belt champion** — stored in Firestore `meta/settings.beltHolder` (Firestore mode) or `localStorage` key `beltHolder` (local mode). Defaults to `"Josh"`.
+- **Data versioning** — a `DATA_VERSION` constant triggers a one-time clean reset when bumped on deploy. Guarded to only run in local mode — never wipes Firestore data.
+- **Migration** — existing local data can be copied to Firestore via **Settings → Migrate local data → Firestore** (visible only when Firestore is configured and migration hasn't run yet).
 - **Mobile** — designed for 375px phone screens. All tap targets are 44px minimum. Light gray input boxes, white screens throughout. Native pinch-zoom enabled.
 - **Zoom widget** — floating A−/100%/A+ pill (bottom-right, fades until hovered). Font size 12–24px in 2px steps. Keyboard: Ctrl+= / Ctrl+− / Ctrl+0. Persists via `localStorage` key `zoomSize`.
 - **Accessibility** — WCAG AA contrast on all text. Body line-height 1.5.
@@ -198,7 +201,7 @@ Yes — enter the dollar amount for each player individually in their own Greeny
 A backup downloads automatically every time a round is saved — no action needed. You can also manually trigger one via **Settings → Export Data**. To restore from a backup, use **Settings → Import Data** and select the JSON file. If your device syncs Downloads to iCloud, Google Drive, or OneDrive, backups are effectively cloud-stored.
 
 **Q: Can I use the app on multiple phones?**
-Data is stored locally on each device (IndexedDB). To share data between devices, export from one and import on the other. There is no cloud sync.
+Yes — all data syncs in real time via Firebase Firestore. Open the same group URL on any device and you'll see the same leaderboard, rounds, and handicaps. Changes made on one device appear instantly on all others.
 
 **Q: How do I set up a second group?**
 Go to the admin view at `?admin=1` and tap **+ Create New Group**. Enter the group's name (e.g. "Saturday") — the app generates a random URL key, creates the group, and navigates to it. Share that URL with the group members. The group starts fresh with default players and no rounds.

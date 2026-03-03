@@ -9,9 +9,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Architecture
 
 - **Single file:** Everything lives in `index.html` — HTML, CSS, and JS inline. No frameworks, no build tools, no bundler.
-- **Storage:** IndexedDB (database `"fwbGaggle"`, object stores: `players`, `rounds`) with localStorage fallback.
-- **Offline:** Fully functional offline after first load. Only external resource is Google Fonts (degrades gracefully).
-- **No build/test/lint commands.** Open `index.html` directly in a browser to run.
+- **Storage:** Firebase Firestore (real-time sync, primary) → IndexedDB fallback → localStorage fallback. Controlled by `FIREBASE_CONFIG` constant at top of `<script>`: set to a config object to enable Firestore, `null` to use local IndexedDB only.
+- **Firestore SDK:** Firebase compat SDK v9.23.0 loaded via CDN in `<head>` (`firebase-app-compat.js` + `firebase-firestore-compat.js`). Uses compat API (not ES modules) to work with the existing non-module script.
+- **Offline:** Firestore offline persistence enabled via `enablePersistence({ synchronizeTabs: true })`. Fully functional without internet — changes queue and sync on reconnect. Google Fonts degrades gracefully.
+- **No build/test/lint commands.** Open `index.html` directly in a browser to run (or serve via GitHub Pages for Firestore to work fully).
 
 ## Handicap Calculation (Critical Business Logic)
 
@@ -57,15 +58,21 @@ Net score = `actual - hdcpBefore` (negative is good). Round winner = lowest net 
 }
 ```
 
-localStorage keys (outside IndexedDB):
-- `beltHolder` / `<group>-beltHolder` — current belt champion per group (default: `"Josh"`)
-- `dataVersion` / `<group>-dataVersion` — one-time migration key per group (current: `"v2-clean"`)
-- `autoBackup` / `<group>-autoBackup` — silent backup JSON written after every round save
-- `editorPin` / `<group>-editorPin` — per-group Editor PIN (default: `"2026"`)
-- `knownGroups` — shared JSON array of all registered group keys (used by admin view)
-- `groupLabel-<key>` — human-readable label for a group key (e.g. `"Monday Gaggle"`)
-- `adminPin` — shared global Admin PIN (bypasses Editor PIN on any group)
-- `zoomSize` — shared device-level zoom preference (not namespaced)
+localStorage keys (outside IndexedDB — used in local mode only unless noted):
+- `beltHolder` / `<group>-beltHolder` — belt champion (local mode). In Firestore mode: `_fsSettings.beltHolder`
+- `dataVersion` / `<group>-dataVersion` — one-time migration key (local mode only; never checked in Firestore mode)
+- `autoBackup` / `<group>-autoBackup` — silent backup JSON written after every round save (both modes)
+- `editorPin` / `<group>-editorPin` — Editor PIN (local mode). In Firestore mode: `_fsSettings.editorPin`
+- `knownGroups` — shared JSON array of all registered group keys (used by admin view, both modes)
+- `groupLabel-<key>` — human-readable label for a group key (both modes)
+- `adminPin` — shared global Admin PIN (both modes)
+- `zoomSize` — shared device-level zoom preference (both modes)
+- `<group>-fsMigrated` — set after Migrate local data → Firestore completes, hides migration button
+
+Firestore document paths (Firestore mode):
+- `groups/{GROUP}/players/{playerId}` — player documents (id excluded from doc, used as doc key)
+- `groups/{GROUP}/rounds/{roundId}` — round documents
+- `groups/{GROUP}/meta/settings` — `{ beltHolder, editorPin, skinsRate, greenyRate, competitionBuyin }`
 
 ## Round Deletion & Recalculation
 
@@ -83,12 +90,12 @@ The dashboard is a single scrolling page (no tabs). All sections stack verticall
 2. **Enter Round** — White content panel. Date picker, score inputs (live handicap preview), Skins $ and Greeny $ per player, auto-determines winner on save. Only players with a score entered are updated — absent players keep their current handicap.
 3. **Round History** — Expandable round cards (newest first), delete with full recalculation. Skins/Greeny columns appear automatically if round has winnings data
 4. **Manage Players** — Add/edit/toggle active/delete players. Sub-line shows skins and greeny totals if non-zero
-5. **Settings** — Handicap reference table, payout calculator (configurable buy-in + 1/2/3 places; default 2 places 60/40%), skins calculator (per-hole rates or fixed pot), greeny calculator (closest-to-pin par 3s), security (4-digit PIN), export/import JSON, Clear Round Data, Load Sample Data, Reset All Data
+5. **Settings** — Handicap reference table, payout calculator (configurable buy-in + 1/2/3 places; default 2 places 60/40%), skins calculator (per-hole rates or fixed pot), greeny calculator (closest-to-pin par 3s), security (4-digit PIN), export/import JSON, Clear Round Data, Load Sample Data, Reset All Data, Migrate local data → Firestore (visible only in Firestore mode before migration)
 6. **Help & FAQ** — Quick Start guide, 10 expandable FAQ items (tap to open/close), handicap rules summary. Accessible via full-width button at bottom of dashboard nav grid.
 
 ## Belt Holder / Monday Champion
 
-- Stored in `localStorage.getItem('beltHolder')`, default `"Josh"`
+- Stored in `_fsSettings.beltHolder` (Firestore mode) or `localStorage.getItem('beltHolder')` (local mode), default `"Josh"`
 - **Auto-update:** when a round is saved on a Monday, the winner becomes the new belt holder
 - **Manual update:** tap the ✎ icon in the belt bar → player picker modal (light gray background) → select champion → live update
 - `updateBeltHolderFromRounds(rounds)` scans Monday rounds (most recent first) and sets the belt holder — called in `fullRecalculate()`
@@ -131,26 +138,29 @@ Each group is isolated by the `?group=<key>` URL parameter. The key is a 16-char
 
 - `GROUP` constant read from `new URLSearchParams(window.location.search).get('group') || 'monday'`
 - `GROUP_LABEL` = `localStorage.getItem('groupLabel-' + GROUP)` with fallback to capitalised group name + " Gaggle"
-- `DB_NAME`: `'fwbGaggle'` for monday (backward compat), `'fwbGaggle-<group>'` for all others
+- `DB_NAME`: `'fwbGaggle'` for monday (backward compat), `'fwbGaggle-<group>'` for all others (IDB mode only)
 - `lsKey(name)` helper: returns `name` for monday, `'<group>-name'` for others
 - All group-specific localStorage keys go through `lsKey()`: `beltHolder`, `dataVersion`, `autoBackup`, `editorPin`
 - Shared (no prefix): `adminPin`, `zoomSize`, `knownGroups`, `groupLabel-<key>`
 - `registerGroup()` called in `init()` — adds group key to `knownGroups` array in localStorage
-- **Admin view**: `?admin=1` in URL — skips normal init, hides belt bar, shows `screenAdmin`
-  - `renderAdmin()` opens each known group's IndexedDB read-only to get player/round counts
+- **Default players:** `monday` group seeds the 16 named players. All other groups seed `Player 1` – `Player 16` (starting hdcp 18).
+- **Admin view**: `?admin=1` in URL — initialises Firebase (if configured) then shows `screenAdmin`
+  - `renderAdmin()` reads player/round counts from Firestore (Firestore mode) or opens each group's IndexedDB (local mode)
   - Labels looked up from `groupLabel-<key>` in localStorage
   - Tap any group card → navigates to `?group=<key>`
   - **Create New Group** button → `adminCreateGroup()` → prompts for a name, calls `generateGroupKey()` (8 random bytes → 16-char hex), stores label, navigates to new group URL
 
 ## Data Versioning
 
-`DATA_VERSION = 'v2-clean'` in `init()`. On first load after a deploy that bumps this value, the app:
+`DATA_VERSION = 'v2-clean'` in `init()`. On first load after a deploy that bumps this value (local mode only):
 1. Clears all IndexedDB data (`clearAll()`)
 2. Sets `beltHolder` to `"Josh"` in localStorage
 3. Stores the new version key so the reset only fires once
 4. Seeds default players and renders a clean dashboard
 
-To trigger a one-time reset on next deploy, bump `DATA_VERSION` to a new string.
+**Firestore mode is exempt** — the `DATA_VERSION` check is guarded by `if (!firestoreDB)` to prevent wiping shared cloud data for all users.
+
+To trigger a one-time reset on next deploy (local mode), bump `DATA_VERSION` to a new string.
 
 ## Design Tokens
 
@@ -195,7 +205,7 @@ Per-group 4-digit PIN stored via `lsKey('editorPin')`. Default `"2026"` set on f
 
 **Key functions:** `requirePin(cb)`, `_showPinPad(title, onComplete)`, `pinKey(key)`, `_updatePinDots()`, `setupPin()`, `changePin()`, `confirmRemovePin()`, `removePin()`, `renderPinSection()`
 
-**localStorage key:** `lsKey('editorPin')` — stores PIN as plain string. Default `"2026"`.
+**Storage:** `lsKey('editorPin')` in local mode; `_fsSettings.editorPin` (Firestore `meta/settings` doc) in Firestore mode. Default `"2026"` written on first load (local) or first settings doc creation (Firestore).
 
 ### Admin PIN
 Global (not namespaced) PIN stored in `localStorage` key `adminPin`. Bypasses Editor PIN on any group — accepted by both `requirePin()` and `changePin()`/`confirmRemovePin()`. Managed from the `?admin=1` admin view.
@@ -213,7 +223,9 @@ Global (not namespaced) PIN stored in `localStorage` key `adminPin`. Bypasses Ed
 
 ## Default Players (preloaded on first launch)
 
-Visanu 24, Biscuit 18, Julius 22, PK 15, Todd 20, Timmy 15, Tony 14, Rich 15, Josh 14, Jordan 18, Chuck 24, Steve 14, Ben 14, Yut 17, Haj 22, Mikey 22
+**`monday` group:** Visanu 24, Biscuit 18, Julius 22, PK 15, Todd 20, Timmy 15, Tony 14, Rich 15, Josh 14, Jordan 18, Chuck 24, Steve 14, Ben 14, Yut 17, Haj 22, Mikey 22
+
+**All other groups:** Player 1 – Player 16, starting handicap 18 each.
 
 ## QA Checklist (verify before finishing)
 
@@ -239,3 +251,8 @@ Visanu 24, Biscuit 18, Julius 22, PK 15, Todd 20, Timmy 15, Tony 14, Rich 15, Jo
 20. Greeny Calculator: select players, pick par 3 winners, shows zero-sum net winnings
 21. Editor PIN: default 2026 on first load; ask once per session; all protected actions unlock after correct entry; Admin PIN also accepted
 22. New group creation from admin: generates 16-char hex key, prompts for name, stores label, navigates to new group URL
+23. Firestore mode: set FIREBASE_CONFIG → players/rounds/settings sync in real-time across all devices; onSnapshot listeners update UI without page refresh
+24. Firestore mode: fullRecalculate() uses a single batch.commit() for all player+round writes; _suppressRender prevents listener storms mid-batch
+25. Firestore mode: DATA_VERSION reset skipped (guard: if (!firestoreDB)); settings defaults written to Firestore on first settings doc creation
+26. Local mode: FIREBASE_CONFIG = null → app behaves exactly as before (IndexedDB / localStorage, no Firestore calls)
+27. Non-monday groups seed Player 1–16 (hdcp 18) instead of the named Monday players
