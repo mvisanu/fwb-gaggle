@@ -1635,7 +1635,10 @@ async function clearAll() {
 async function seedDefaultPlayers() {
   const players = await getPlayers();
   if (players.length === 0) {
-    for (const p of DEFAULT_PLAYERS) {
+    const defaults = GROUP === 'monday'
+      ? DEFAULT_PLAYERS
+      : Array.from({ length: 16 }, (_, i) => ({ name: 'Player ' + (i + 1), startingHdcp: 18 }));
+    for (const p of defaults) {
       await putPlayer({ id: genId(), name: p.name, startingHdcp: p.startingHdcp, currentHdcp: p.startingHdcp, active: true, wins: 0, skinsWinnings: 0, greenyWinnings: 0 });
     }
   }
