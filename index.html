@@ -1327,6 +1327,9 @@ function fsPlayersCol()  { return firestoreDB.collection('groups').doc(GROUP).co
 function fsRoundsCol()   { return firestoreDB.collection('groups').doc(GROUP).collection('rounds'); }
 function fsSettingsDoc() { return firestoreDB.collection('groups').doc(GROUP).collection('meta').doc('settings'); }
 
+// Strip undefined values — Firestore rejects them
+function fsClean(obj) { return JSON.parse(JSON.stringify(obj)); }
+
 // Re-render whichever screen is currently visible (skip Enter Round to avoid disrupting input)
 function _renderCurrentScreen() {
   if (_suppressRender) return;
@@ -1558,7 +1561,7 @@ async function getRounds() {
 async function putPlayer(p) {
   if (firestoreDB) {
     const { id, ...data } = p;
-    await fsPlayersCol().doc(id).set(data);
+    await fsPlayersCol().doc(id).set(fsClean(data));
     return;
   }
   if (useLocalStorage) {
@@ -1573,7 +1576,7 @@ async function putPlayer(p) {
 async function putRound(r) {
   if (firestoreDB) {
     const { id, ...data } = r;
-    await fsRoundsCol().doc(id).set(data);
+    await fsRoundsCol().doc(id).set(fsClean(data));
     return;
   }
   if (useLocalStorage) {
@@ -1712,8 +1715,8 @@ async function fullRecalculate() {
     _suppressRender = true;
     try {
       const batch = firestoreDB.batch();
-      for (const p of players) { const { id, ...data } = p; batch.set(fsPlayersCol().doc(id), data); }
-      for (const r of rounds)  { const { id, ...data } = r; batch.set(fsRoundsCol().doc(id),  data); }
+      for (const p of players) { const { id, ...data } = p; batch.set(fsPlayersCol().doc(id), fsClean(data)); }
+      for (const r of rounds)  { const { id, ...data } = r; batch.set(fsRoundsCol().doc(id),  fsClean(data)); }
       await batch.commit();
       _fsPlayers = [...players];
       _fsRounds  = [...rounds];
@@ -2526,7 +2529,7 @@ async function migrateLocalToFirestore() {
     ];
     for (let i = 0; i < ops.length; i += 500) {
       const batch = firestoreDB.batch();
-      ops.slice(i, i + 500).forEach(op => batch.set(op.col.doc(op.id), op.data));
+      ops.slice(i, i + 500).forEach(op => batch.set(op.col.doc(op.id), fsClean(op.data)));
       await batch.commit();
     }
     localStorage.setItem(lsKey('fsMigrated'), '1');
