@@ -58,7 +58,7 @@ The home screen scrolls through all sections:
 | Section | What it shows |
 |---|---|
 | **Stats Banner** | Total rounds played · Date of last round · Player with most wins |
-| **Leaderboard** | All active players sorted by handicap (lowest = best). Tap any column header to re-sort. Gold row = player with most wins |
+| **Leaderboard** | All active players sorted by handicap (lowest = best). Tap any column header to re-sort. Wins column shows 🏆 count (includes winningsOnly rounds). Gold row = player with most wins |
 | **Wins** | Gold horizontal bar chart — one bar per player, length = total wins |
 | **Winnings** | Colour-coded pie chart showing each player's share of total skins + greeny dollars |
 | **Win Leaderboard** | Ranked by wins with win percentage |
@@ -99,11 +99,34 @@ This is a custom society handicap — the handicap value represents expected Sta
 
 ---
 
+## Player History
+
+Tap **📈 Player History** from the dashboard to see a per-player view of all rounds.
+
+- **List view** — all active players who have at least one round, ordered by total winnings → highest handicap → most wins → name. Each card shows the player's current handicap, win count, and their last 3 rounds in a compact table
+- **Detail view** — tap any player card to see every round they've played, newest first. Shows points, net score, handicap change, and skins/greeny winnings columns when present
+- Trophy 🏆 icon appears next to the date on rounds where that player won (including winningsOnly rounds)
+
+---
+
+## Update Winnings
+
+Tap **💵 Update Winnings** (PIN protected) to record a non-Monday result without changing handicaps.
+
+- Select the date — the app detects whether a regular round, a winningsOnly entry, or a new entry exists for that date
+- Enter each player's **Pts** (optional), **$ Stableford**, **$ Skins**, and **$ Greeny** amounts
+- Winnings accumulate to player totals and appear in the leaderboard and win counts
+- The player with the highest $ Stableford payout is the winner; falls back to highest Pts if no dollar amounts are entered
+- Does **not** modify handicaps regardless of the day
+
+---
+
 ## Round History
 
 - Tap **History** to see all rounds, newest first
 - Tap a round card to expand it and see every player's score, net, and handicap change
 - Rounds with skins or greeny winnings show those columns automatically
+- winningsOnly rounds show winner highlighted in gold, sorted by payout
 - **Delete a round** — all subsequent handicaps, win counts, and winnings are fully recalculated from scratch
 
 ---

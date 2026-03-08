@@ -42,21 +42,33 @@ Net score = `actual - hdcpBefore` (negative is good). Round winner = lowest net 
 ```json
 {
   "players": [
-    { "id": "uuid", "name": "Visanu", "startingHdcp": 24, "currentHdcp": 24, "active": true, "wins": 0, "skinsWinnings": 0, "greenyWinnings": 0 }
+    { "id": "uuid", "name": "Visanu", "startingHdcp": 24, "currentHdcp": 24, "active": true, "wins": 0, "skinsWinnings": 0, "greenyWinnings": 0, "payoutWinnings": 0 }
   ],
   "rounds": [
     {
       "id": "uuid",
       "date": "2026-03-01",
       "scores": [
-        { "playerId": "uuid", "playerName": "Visanu", "hdcpBefore": 24, "actual": 22, "hdcpAfter": 23, "netScore": -2, "skinsWon": 0, "greenyWon": 0 }
+        { "playerId": "uuid", "playerName": "Visanu", "hdcpBefore": 24, "actual": 22, "hdcpAfter": 23, "netScore": -2, "skinsWon": 0, "greenyWon": 0, "payoutWon": 0 }
       ],
       "winnerId": "uuid",
       "winnerName": "Visanu"
+    },
+    {
+      "id": "uuid",
+      "date": "2026-03-07",
+      "winningsOnly": true,
+      "scores": [
+        { "playerId": "uuid", "playerName": "Julius", "actual": 29, "skinsWon": 0, "greenyWon": 0, "payoutWon": 10 }
+      ],
+      "winnerId": "uuid",
+      "winnerName": "Julius"
     }
   ]
 }
 ```
+
+**winningsOnly rounds** (`winningsOnly: true`): recorded via Update Winnings screen. Handicaps are NOT recalculated. `fullRecalculate()` fast-path accumulates `payoutWinnings`, `skinsWinnings`, `greenyWinnings` and increments `wins` for the winner. Winner determined by `_winningsWinner()` (highest `payoutWon`, fallback highest `actual`). Stored `winnerId` may be stale — always recompute via `_winningsWinner(r.scores)` at display time.
 
 localStorage keys (outside IndexedDB — used in local mode only unless noted):
 - `beltHolder` / `<group>-beltHolder` — belt champion (local mode). In Firestore mode: `_fsSettings.beltHolder`
@@ -76,7 +88,13 @@ Firestore document paths (Firestore mode):
 
 ## Round Deletion & Recalculation
 
-Deleting a round requires full recalculation: reset all players to `startingHdcp`, `wins=0`, `skinsWinnings=0`, `greenyWinnings=0`, replay every remaining round chronologically, recompute all handicaps, win counts, and winnings from scratch. `updateBeltHolderFromRounds()` is also called to sync the belt holder from Monday rounds.
+Deleting a round requires full recalculation: reset all players to `startingHdcp`, `wins=0`, `skinsWinnings=0`, `greenyWinnings=0`, `payoutWinnings=0`, replay every remaining round chronologically, recompute all handicaps, win counts, and winnings from scratch. `updateBeltHolderFromRounds()` is also called to sync the belt holder from Monday rounds.
+
+**`_winningsWinner(scores)`** — determines winner for winningsOnly rounds: highest `payoutWon` first; fallback to highest `actual` when no payouts entered. Returns `{ winnerId, winnerName }`.
+
+**Leaderboard win counts** are computed live in `renderDashboard()` by iterating all rounds (using `_winningsWinner` for winningsOnly rounds) — never read from stored `p.wins` for the display. This avoids stale Firestore data issues.
+
+**Firestore batch limit** — `fullRecalculate()` chunks all player+round writes into batches of 500 ops (Firestore hard limit). winningsOnly rounds excluded from batch (not mutated), except when `winnerId` changed (patched individually).
 
 ## App Screens
 
@@ -88,10 +106,19 @@ The dashboard is a single scrolling page (no tabs). All sections stack verticall
 
 1. **Dashboard** — Stats banner (Rounds / Last Round / Top Winner) → Leaderboard → Wins bar chart → Winnings pie chart → Win Leaderboard → Form Guide → Nav buttons
 2. **Enter Round** — White content panel. Date picker, score inputs (live handicap preview), Skins $ and Greeny $ per player, auto-determines winner on save. Only players with a score entered are updated — absent players keep their current handicap.
-3. **Round History** — Expandable round cards (newest first), delete with full recalculation. Skins/Greeny columns appear automatically if round has winnings data
-4. **Manage Players** — Add/edit/toggle active/delete players. Sub-line shows skins and greeny totals if non-zero
-5. **Settings** — Handicap reference table, payout calculator (configurable buy-in + 1/2/3 places; default 2 places 60/40%), skins calculator (per-hole rates or fixed pot), greeny calculator (closest-to-pin par 3s), security (4-digit PIN), export/import JSON, Clear Round Data, Load Sample Data, Reset All Data, Migrate local data → Firestore (visible only in Firestore mode before migration)
-6. **Help & FAQ** — Quick Start guide, 10 expandable FAQ items (tap to open/close), handicap rules summary. Accessible via full-width button at bottom of dashboard nav grid.
+3. **Round History** — Expandable round cards (newest first), delete with full recalculation. Skins/Greeny columns appear automatically if round has winnings data. winningsOnly cards show winner row gold, rows sorted by payoutWon desc.
+4. **Player History** — (`screenPlayerHistory`, `renderPlayerHistory()`, `_renderPlayerHistoryContent()`). State: `_playerHistoryId` (null = list view, non-null = detail for that player).
+   - **List view**: active players with ≥1 round; sorted total winnings desc → currentHdcp desc → wins desc → name. Each card shows `Hdcp N · N wins` + last 3 rounds via `_phRow()`. Tap → detail.
+   - **Detail view**: all rounds newest first; full table with Skins/Greeny columns. Trophy via `_winningsWinner(r.scores)` computed on-the-fly (not from stored `winnerId`).
+   - `_phRow(r, playerId, showWinnings)` — shared row renderer. winningsOnly rows recompute winner via `_winningsWinner` to avoid stale stored `winnerId`.
+5. **Update Winnings** — (`screenUpdateWinnings`, `renderWinningsEntry()`, `onWinningsDateChange()`, `saveWinningsEntry()`). PIN protected. Records non-Monday results without updating handicap.
+   - Date picker → detects existing regular round / existing winningsOnly round / new entry
+   - Inputs: Pts (optional), $ Stableford, $ Skins, $ Greeny per player
+   - Saves as `winningsOnly: true` round. Winner = `_winningsWinner()` (highest payoutWon, fallback highest actual)
+   - Does NOT modify handicaps regardless of day
+6. **Manage Players** — Add/edit/toggle active/delete players. Sub-line shows skins and greeny totals if non-zero
+7. **Settings** — Handicap reference table, payout calculator (configurable buy-in + 1/2/3 places; default 2 places 60/40%), skins calculator (per-hole rates or fixed pot), greeny calculator (closest-to-pin par 3s), security (4-digit PIN), export/import JSON, Clear Round Data, Load Sample Data, Reset All Data, Migrate local data → Firestore (visible only in Firestore mode before migration)
+8. **Help & FAQ** — Quick Start guide, 10 expandable FAQ items (tap to open/close), handicap rules summary. Accessible via full-width button at bottom of dashboard nav grid.
 
 ## Belt Holder / Monday Champion
 
@@ -256,3 +283,7 @@ Global (not namespaced) PIN stored in `localStorage` key `adminPin`. Bypasses Ed
 25. Firestore mode: DATA_VERSION reset skipped (guard: if (!firestoreDB)); settings defaults written to Firestore on first settings doc creation
 26. Local mode: FIREBASE_CONFIG = null → app behaves exactly as before (IndexedDB / localStorage, no Firestore calls)
 27. Non-monday groups seed Player 1–16 (hdcp 18) instead of the named Monday players
+28. Player History list view: only players with ≥1 round shown; sorted total winnings → hdcp → wins → name; shows Hdcp + wins count per card
+29. Player History detail view: all rounds for player, trophy on winning rows (computed live, not from stored winnerId)
+30. Update Winnings: saves winningsOnly round; does not change handicaps; winner shown in History and Player History with trophy
+31. Leaderboard Wins column counts wins from all round types including winningsOnly (computed live from rounds in renderDashboard)
