@@ -796,6 +796,21 @@ h1, h2, h3, .heading {
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 
+/* --- Player History --- */
+.player-hist-wrap { overflow-x: auto; }
+.player-hist-wrap table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.player-hist-wrap th {
+  text-align: left; padding: 8px 6px;
+  color: var(--white); background: var(--primary);
+  font-family: 'Bebas Neue', sans-serif; font-size: 0.78rem;
+  white-space: nowrap;
+}
+.player-hist-wrap th:first-child { border-radius: 8px 0 0 8px; }
+.player-hist-wrap th:last-child  { border-radius: 0 8px 8px 0; }
+.player-hist-wrap td { padding: 9px 6px; border-bottom: 1px solid var(--border-light); color: var(--text-dark); white-space: nowrap; }
+.player-hist-wrap tr.winner-row { background: rgba(212,175,55,0.1); }
+.player-hist-wrap tr.winnings-only-row td { color: var(--text-muted); }
+
 /* Scrollbar styling */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -927,6 +942,8 @@ h1, h2, h3, .heading {
       <button class="nav-btn" onclick="showScreen('screenHistory')"><span class="nav-icon">&#128203;</span>History</button>
       <button class="nav-btn" onclick="requirePin(()=>showScreen('screenPlayers'))"><span class="nav-icon">&#128101;</span>Players</button>
       <button class="nav-btn" onclick="showScreen('screenSettings')"><span class="nav-icon">&#9881;</span>Settings</button>
+      <button class="nav-btn" onclick="showScreen('screenPlayerHistory')"><span class="nav-icon">&#128200;</span>Player History</button>
+      <button class="nav-btn" onclick="requirePin(()=>showScreen('screenUpdateWinnings'))"><span class="nav-icon">&#128181;</span>Update Winnings</button>
       <button class="nav-btn" onclick="showScreen('screenHelp')" style="grid-column:span 2"><span class="nav-icon">&#10067;</span>Help &amp; FAQ</button>
     </div>
   </div>
@@ -1203,6 +1220,25 @@ h1, h2, h3, .heading {
 
 </div>
 
+<!-- ============ PLAYER HISTORY ============ -->
+<div class="screen" id="screenPlayerHistory">
+  <div id="playerHistoryContent"></div>
+</div>
+
+<!-- ============ UPDATE WINNINGS ============ -->
+<div class="screen" id="screenUpdateWinnings">
+  <div class="content-panel">
+    <label for="winningsDate" style="font-size:0.85rem;margin-bottom:6px;display:block;color:var(--text-muted)">Round Date</label>
+    <input type="date" id="winningsDate" class="date-input" style="margin-bottom:12px" onchange="onWinningsDateChange()">
+    <div id="winningsRoundInfo" style="margin-bottom:12px"></div>
+    <div id="winningsEntryList"></div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn btn-secondary btn-full" onclick="showScreen('screenDashboard')">Cancel</button>
+      <button class="btn btn-primary btn-full" onclick="requirePin(()=>saveWinningsEntry())">Save Winnings</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ MODAL ============ -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal" id="modalContent"></div>
@@ -1249,9 +1285,10 @@ function _renderCurrentScreen() {
   const id = active.id;
   if (id === 'screenDashboard') renderDashboard();
   else if (id === 'screenHistory') renderHistory();
-  else if (id === 'screenPlayers') renderPlayers();
+  else if (id === 'screenPlayers') renderPlayerList();
   else if (id === 'screenSettings') renderSettings();
-  // screenEnterRound intentionally skipped
+  else if (id === 'screenPlayerHistory') renderPlayerHistory();
+  // screenEnterRound and screenUpdateWinnings intentionally skipped
 }
 
 // ========================================
@@ -1587,6 +1624,30 @@ async function fullRecalculate() {
   rounds.sort((a, b) => a.date.localeCompare(b.date) || (a.id > b.id ? 1 : -1));
 
   for (const round of rounds) {
+    // Winnings-only rounds (non-Monday skins/greeny): accumulate winnings but skip handicap/winner
+    if (round.winningsOnly) {
+      for (const score of round.scores) {
+        const player = players.find(p => p.id === score.playerId);
+        if (!player) continue;
+        player.payoutWinnings  = (player.payoutWinnings  || 0) + (score.payoutWon  || 0);
+        player.skinsWinnings   = (player.skinsWinnings   || 0) + (score.skinsWon   || 0);
+        player.greenyWinnings  = (player.greenyWinnings  || 0) + (score.greenyWon  || 0);
+      }
+      const { winnerId, winnerName } = _winningsWinner(round.scores);
+      const winnerChanged = round.winnerId !== winnerId;
+      round.winnerId = winnerId;
+      round.winnerName = winnerName;
+      const winnerPlayer = players.find(p => p.id === winnerId);
+      if (winnerPlayer) winnerPlayer.wins++;
+      if (!firestoreDB) {
+        await putRound(round);
+      } else if (winnerChanged) {
+        const { id, ...data } = round;
+        await fsRoundsCol().doc(id).set(fsClean(data));
+      }
+      continue;
+    }
+
     let bestNet = -Infinity;
     let winnerId = null;
     let winnerHdcp = Infinity;
@@ -1628,10 +1689,18 @@ async function fullRecalculate() {
   if (firestoreDB) {
     _suppressRender = true;
     try {
-      const batch = firestoreDB.batch();
-      for (const p of players) { const { id, ...data } = p; batch.set(fsPlayersCol().doc(id), fsClean(data)); }
-      for (const r of rounds)  { const { id, ...data } = r; batch.set(fsRoundsCol().doc(id),  fsClean(data)); }
-      await batch.commit();
+      // Only write rounds that were mutated (winningsOnly rounds are untouched)
+      const mutatedRounds = rounds.filter(r => !r.winningsOnly);
+      const ops = [
+        ...players.map(p => ({ col: fsPlayersCol(), id: p.id, data: (({ id, ...d }) => d)(p) })),
+        ...mutatedRounds.map(r => ({ col: fsRoundsCol(), id: r.id, data: (({ id, ...d }) => d)(r) }))
+      ];
+      // Chunk into batches of 500 (Firestore hard limit)
+      for (let i = 0; i < ops.length; i += 500) {
+        const batch = firestoreDB.batch();
+        ops.slice(i, i + 500).forEach(op => batch.set(op.col.doc(op.id), fsClean(op.data)));
+        await batch.commit();
+      }
       _fsPlayers = [...players];
       _fsRounds  = [...rounds];
     } finally { _suppressRender = false; }
@@ -1718,7 +1787,9 @@ function showScreen(id) {
       screenPlayers: 'Manage Players',
       screenSettings: 'Settings',
       screenHelp: 'Help & FAQ',
-      screenAdmin: 'Admin'
+      screenAdmin: 'Admin',
+      screenPlayerHistory: 'Player History',
+      screenUpdateWinnings: 'Update Winnings'
     };
     title.textContent = titles[id] || GROUP_LABEL;
   }
@@ -1731,6 +1802,8 @@ function showScreen(id) {
   if (id === 'screenPlayers') renderPlayerList();
   if (id === 'screenSettings') renderSettings();
   if (id === 'screenAdmin') renderAdmin();
+  if (id === 'screenPlayerHistory') renderPlayerHistory();
+  if (id === 'screenUpdateWinnings') renderWinningsEntry();
 }
 
 document.getElementById('backBtn').addEventListener('click', () => showScreen('screenDashboard'));
@@ -1859,15 +1932,23 @@ async function renderDashboard() {
   }, null);
   document.getElementById('statLeader').textContent = leader && leader.wins > 0 ? leader.name : '—';
 
+  // Count wins from all rounds on the fly (includes winningsOnly rounds)
+  const winCountById = {};
+  for (const r of rounds) {
+    let wId = r.winnerId;
+    if (r.winningsOnly) wId = _winningsWinner(r.scores).winnerId;
+    if (wId) winCountById[wId] = (winCountById[wId] || 0) + 1;
+  }
+
   // Find player with most wins for highlighting
-  const maxWins = Math.max(0, ...activePlayers.map(p => p.wins));
+  const maxWins = Math.max(0, ...activePlayers.map(p => winCountById[p.id] || 0));
 
   // Leaderboard — build row data then sort/render
   _leaderboardData = activePlayers.map(p => ({
-    id: p.id, name: p.name, hdcp: p.currentHdcp, wins: p.wins,
+    id: p.id, name: p.name, hdcp: p.currentHdcp, wins: winCountById[p.id] || 0,
     last: getLastRoundScore(p.id, rounds),
     change: getLastChange(p.id, rounds),
-    isTopWinner: maxWins > 0 && p.wins === maxWins
+    isTopWinner: maxWins > 0 && (winCountById[p.id] || 0) === maxWins
   }));
   renderLeaderboard();
 
@@ -2187,6 +2268,46 @@ async function renderHistory() {
   div.innerHTML = rounds.map(r => {
     const d = new Date(r.date + 'T00:00:00');
     const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+    // Winnings-only round
+    if (r.winningsOnly) {
+      const hasSkins = r.scores.some(s => s.skinsWon > 0);
+      const hasGreeny = r.scores.some(s => s.greenyWon > 0);
+      const hasScores = r.scores.some(s => s.actual != null);
+      const detailRows = r.scores
+        .sort((a, b) => (b.payoutWon||0) - (a.payoutWon||0) || (a.playerName||'').localeCompare(b.playerName||''))
+        .map(s => {
+          const isWinner = s.playerId === r.winnerId;
+          return `<tr class="${isWinner ? 'winner-row' : ''}">
+            <td>${isWinner ? '&#127942; ' : ''}${esc(s.playerName)}</td>
+            ${hasScores ? `<td style="font-weight:700">${s.actual != null ? s.actual : '—'}</td>` : ''}
+            ${hasPayout ? `<td style="color:var(--primary);font-weight:600">${s.payoutWon > 0 ? '$' + s.payoutWon : '—'}</td>` : ''}
+            ${hasSkins ? `<td style="color:var(--gold-dark)">${s.skinsWon > 0 ? '$' + s.skinsWon : '—'}</td>` : ''}
+            ${hasGreeny ? `<td style="color:var(--green-good-on-light)">${s.greenyWon > 0 ? '$' + s.greenyWon : '—'}</td>` : ''}
+          </tr>`;
+        }).join('');
+      const hasPayout = r.scores.some(s => s.payoutWon > 0);
+      return `<div class="round-card" style="border-left:3px solid var(--gold)">
+        <div class="round-header" onclick="toggleRound(this)">
+          <div>
+            <div class="round-date">${dateStr}</div>
+            <div class="round-meta" style="color:var(--gold-dark)">&#128181; Winnings only · ${r.scores.length} players</div>
+          </div>
+          <div style="text-align:right">
+            ${r.winnerName ? `<div class="round-winner">&#127942; ${esc(r.winnerName)}</div>` : ''}
+            <div class="round-expand">&#9660;</div>
+          </div>
+        </div>
+        <div class="round-detail">
+          <table>
+            <thead><tr><th>Player</th>${hasScores ? '<th>Pts</th>' : ''}${hasPayout ? '<th style="color:var(--primary)">Comp</th>' : ''}${hasSkins ? '<th style="color:var(--gold)">Skins</th>' : ''}${hasGreeny ? '<th style="color:var(--green-good-on-light)">Greeny</th>' : ''}</tr></thead>
+            <tbody>${detailRows}</tbody>
+          </table>
+          <button class="delete-round-btn" onclick="confirmDeleteRound('${r.id}')">Delete Entry</button>
+        </div>
+      </div>`;
+    }
+
     const hasPayout = r.scores.some(s => s.payoutWon > 0);
     const hasSkins = r.scores.some(s => s.skinsWon > 0);
     const hasGreeny = r.scores.some(s => s.greenyWon > 0);
@@ -3242,6 +3363,277 @@ function renderPinSection() {
       <div style="font-size:0.9rem;color:var(--text-muted);margin-bottom:12px">No Editor PIN set. Add a PIN to protect data entry.</div>
       <button class="btn btn-secondary" onclick="setupPin()">Set Up Editor PIN</button>`;
   }
+}
+
+// ========================================
+// PLAYER HISTORY
+// ========================================
+let _playerHistoryId = null;
+
+async function renderPlayerHistory() {
+  _playerHistoryId = null; // always reset to list view on nav
+  await _renderPlayerHistoryContent();
+}
+
+async function _renderPlayerHistoryContent() {
+  const players = await getPlayers();
+  const rounds = await getRounds();
+  rounds.sort((a, b) => a.date.localeCompare(b.date) || (a.id > b.id ? 1 : -1));
+  const div = document.getElementById('playerHistoryContent');
+
+  if (_playerHistoryId) {
+    // ── Detail view: all rounds for one player ──
+    const player = players.find(p => p.id === _playerHistoryId);
+    if (!player) { _playerHistoryId = null; await _renderPlayerHistoryContent(); return; }
+    const playerRounds = rounds
+      .filter(r => r.scores.some(s => s.playerId === _playerHistoryId))
+      .reverse();
+    div.innerHTML = `
+      <button class="lb-show-all" style="margin-bottom:14px" onclick="_playerHistoryId=null;_renderPlayerHistoryContent()">&#8592; All Players</button>
+      <div style="font-weight:700;font-size:1.1rem;color:var(--primary-deep);margin-bottom:2px">${esc(player.name)}</div>
+      <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:12px">Hdcp: ${player.currentHdcp} &nbsp;·&nbsp; ${playerRounds.length} round${playerRounds.length !== 1 ? 's' : ''}</div>
+      ${playerRounds.length === 0
+        ? '<div style="text-align:center;color:var(--text-muted);padding:24px">No rounds recorded</div>'
+        : `<div class="player-hist-wrap">
+            <table>
+              <thead><tr><th>Date</th><th>Pts</th><th>Net</th><th>Hdcp</th><th>+/-</th><th>Skins</th><th>Greeny</th></tr></thead>
+              <tbody>${playerRounds.map(r => _phRow(r, _playerHistoryId, true)).join('')}</tbody>
+            </table>
+           </div>`}`;
+  } else {
+    // ── List view: all active players, last 3 rounds each ──
+    const activePlayers = players
+      .filter(p => p.active && rounds.some(r => r.scores.some(s => s.playerId === p.id)))
+      .sort((a, b) => {
+        const wA = (a.skinsWinnings || 0) + (a.greenyWinnings || 0) + (a.payoutWinnings || 0);
+        const wB = (b.skinsWinnings || 0) + (b.greenyWinnings || 0) + (b.payoutWinnings || 0);
+        return wB - wA || b.currentHdcp - a.currentHdcp || b.wins - a.wins || a.name.localeCompare(b.name);
+      });
+    if (activePlayers.length === 0) {
+      div.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:24px">No rounds recorded yet</div>';
+      return;
+    }
+    div.innerHTML = activePlayers.map(p => {
+      const allRounds = rounds.filter(r => r.scores.some(s => s.playerId === p.id));
+      const last3 = allRounds.slice(-3).reverse();
+      const miniTable = last3.length > 0
+        ? `<div class="player-hist-wrap" style="margin-top:6px">
+            <table>
+              <thead><tr><th>Date</th><th>Pts</th><th>Net</th><th>Hdcp</th><th>+/-</th></tr></thead>
+              <tbody>${last3.map(r => _phRow(r, p.id, false)).join('')}</tbody>
+            </table>
+           </div>`
+        : '<div style="font-size:0.78rem;color:var(--text-muted);padding:4px 0">No rounds yet</div>';
+      return `<div style="padding:12px 0;border-bottom:1px solid var(--border-light);cursor:pointer"
+                   onclick="_playerHistoryId='${p.id}';_renderPlayerHistoryContent()">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+          <div>
+            <span style="font-weight:700;color:var(--primary-deep)">${esc(p.name)}</span>
+            <span style="font-size:0.8rem;color:var(--text-muted);margin-left:8px">Hdcp ${p.currentHdcp}</span>
+            <span style="font-size:0.8rem;color:var(--text-muted);margin-left:8px">· ${p.wins || 0} win${(p.wins || 0) !== 1 ? 's' : ''}</span>
+          </div>
+          <span style="color:var(--text-muted);font-size:0.82rem">${allRounds.length} round${allRounds.length !== 1 ? 's' : ''} ›</span>
+        </div>
+        ${miniTable}
+      </div>`;
+    }).join('');
+  }
+}
+
+// Shared row renderer. showWinnings=true for detail view, false for compact list
+function _phRow(r, playerId, showWinnings) {
+  const s = r.scores.find(s => s.playerId === playerId);
+  if (!s) return '';
+  const d = new Date(r.date + 'T00:00:00');
+  const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  if (r.winningsOnly) {
+    const hasScore = s.actual != null;
+    const { winnerId: computedWinner } = _winningsWinner(r.scores);
+    const isWinner = computedWinner === playerId;
+    return `<tr class="${isWinner ? 'winner-row' : 'winnings-only-row'}">
+      <td>${isWinner ? '&#127942; ' : ''}${dateStr}</td>
+      <td>${hasScore ? s.actual : '—'}</td>
+      <td colspan="3" style="font-size:0.78rem;color:var(--text-muted)">&#128181; no hdcp change</td>
+      ${showWinnings ? `<td style="color:var(--gold-dark)">${(s.skinsWon||0)>0?'$'+s.skinsWon:'—'}</td>
+      <td style="color:var(--green-good-on-light)">${(s.greenyWon||0)>0?'$'+s.greenyWon:'—'}</td>` : ''}
+    </tr>`;
+  }
+  const diff = (s.hdcpAfter||0) - (s.hdcpBefore||0);
+  const changeStr = diff < 0
+    ? `<span class="change-down">&#9660;${Math.abs(diff)}</span>`
+    : diff > 0 ? `<span class="change-up">&#9650;${diff}</span>`
+    : '<span class="change-same">—</span>';
+  const isWinner = r.winnerId === playerId;
+  return `<tr class="${isWinner ? 'winner-row' : ''}">
+    <td>${isWinner ? '&#127942; ' : ''}${dateStr}</td>
+    <td style="font-weight:700">${s.actual}</td>
+    <td style="color:${s.netScore>=0?'var(--green-good-on-light)':'var(--red-bad-on-light)'};font-weight:600">${s.netScore>=0?'+':''}${s.netScore}</td>
+    <td>${s.hdcpBefore}&#8594;${s.hdcpAfter}</td>
+    <td>${changeStr}</td>
+    ${showWinnings ? `<td style="color:var(--gold-dark)">${(s.skinsWon||0)>0?'$'+s.skinsWon:'—'}</td>
+    <td style="color:var(--green-good-on-light)">${(s.greenyWon||0)>0?'$'+s.greenyWon:'—'}</td>` : ''}
+  </tr>`;
+}
+
+// ========================================
+// UPDATE WINNINGS
+// ========================================
+async function renderWinningsEntry() {
+  const today = new Date();
+  const dateStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+  const dateEl = document.getElementById('winningsDate');
+  if (!dateEl.value) dateEl.value = dateStr;
+  await onWinningsDateChange();
+}
+
+async function onWinningsDateChange() {
+  const date = document.getElementById('winningsDate').value;
+  if (!date) return;
+  const rounds = await getRounds();
+  const existing = rounds.find(r => r.date === date);
+  const infoEl = document.getElementById('winningsRoundInfo');
+  const listEl = document.getElementById('winningsEntryList');
+
+  if (existing && !existing.winningsOnly) {
+    infoEl.innerHTML = `<div style="font-size:0.85rem;padding:10px;background:var(--row-stripe);border-radius:8px;color:var(--text-muted)">
+      &#128203; Regular round found — editing winnings only. Handicaps unchanged.
+    </div>`;
+    listEl.innerHTML = existing.scores
+      .sort((a,b) => (a.playerName||'').localeCompare(b.playerName||''))
+      .map(s => `
+        <div class="score-row">
+          <div class="score-player">
+            <div class="score-player-name">${esc(s.playerName)}</div>
+            <div class="score-player-hdcp">Pts: ${s.actual} | Hdcp: ${s.hdcpBefore}&#8594;${s.hdcpAfter}</div>
+          </div>
+          <div class="score-extras">
+            <label class="score-extra-label"><span>$ Stableford</span><input type="number" inputmode="decimal" class="wu-stableford-input money-input" data-player-id="${s.playerId}" value="${s.payoutWon||''}" placeholder="0.00" min="0" step="0.5"></label>
+            <label class="score-extra-label"><span>$ Skins</span><input type="number" inputmode="decimal" class="wu-skins-input money-input" data-player-id="${s.playerId}" value="${s.skinsWon||''}" placeholder="0.00" min="0" step="0.5"></label>
+            <label class="score-extra-label"><span>$ Greeny</span><input type="number" inputmode="decimal" class="wu-greeny-input money-input" data-player-id="${s.playerId}" value="${s.greenyWon||''}" placeholder="0.00" min="0" step="0.5"></label>
+          </div>
+        </div>`).join('');
+  } else if (existing && existing.winningsOnly) {
+    infoEl.innerHTML = `<div style="font-size:0.85rem;padding:10px;background:var(--row-stripe);border-radius:8px;color:var(--text-muted)">
+      &#128181; Winnings-only entry — no handicap changes.
+    </div>`;
+    listEl.innerHTML = existing.scores
+      .sort((a,b) => (a.playerName||'').localeCompare(b.playerName||''))
+      .map(s => `
+        <div class="score-row">
+          <div class="score-player">
+            <div class="score-player-name">${esc(s.playerName)}</div>
+          </div>
+          <input type="number" inputmode="numeric" class="wu-score-input score-input" data-player-id="${s.playerId}" value="${s.actual||''}" placeholder="Pts" min="0" max="60" style="width:64px">
+          <div class="score-extras">
+            <label class="score-extra-label"><span>$ Stableford</span><input type="number" inputmode="decimal" class="wu-stableford-input money-input" data-player-id="${s.playerId}" value="${s.payoutWon||''}" placeholder="0.00" min="0" step="0.5"></label>
+            <label class="score-extra-label"><span>$ Skins</span><input type="number" inputmode="decimal" class="wu-skins-input money-input" data-player-id="${s.playerId}" value="${s.skinsWon||''}" placeholder="0.00" min="0" step="0.5"></label>
+            <label class="score-extra-label"><span>$ Greeny</span><input type="number" inputmode="decimal" class="wu-greeny-input money-input" data-player-id="${s.playerId}" value="${s.greenyWon||''}" placeholder="0.00" min="0" step="0.5"></label>
+          </div>
+        </div>`).join('');
+  } else {
+    const isMon = isMondayDate(date);
+    if (isMon) {
+      infoEl.innerHTML = `<div style="font-size:0.85rem;padding:10px;background:rgba(212,175,55,0.12);border-radius:8px;color:var(--gold-dark)">
+        &#9888; Monday date — consider using Enter Round to update handicaps too.
+      </div>`;
+    } else {
+      infoEl.innerHTML = `<div style="font-size:0.85rem;padding:10px;background:var(--row-stripe);border-radius:8px;color:var(--text-muted)">
+        New winnings-only entry — handicaps will not change.
+      </div>`;
+    }
+    const players = await getPlayers();
+    const active = players.filter(p => p.active).sort((a,b) => a.name.localeCompare(b.name));
+    listEl.innerHTML = active.map(p => `
+      <div class="score-row">
+        <div class="score-player">
+          <div class="score-player-name">${esc(p.name)}</div>
+          <div class="score-player-hdcp">Hdcp: ${p.currentHdcp}</div>
+        </div>
+        <input type="number" inputmode="numeric" class="wu-score-input score-input" data-player-id="${p.id}" data-player-name="${esc(p.name)}" placeholder="Pts" min="0" max="60" style="width:64px">
+        <div class="score-extras">
+          <label class="score-extra-label"><span>$ Stableford</span><input type="number" inputmode="decimal" class="wu-stableford-input money-input" data-player-id="${p.id}" placeholder="0.00" min="0" step="0.5"></label>
+          <label class="score-extra-label"><span>$ Skins</span><input type="number" inputmode="decimal" class="wu-skins-input money-input" data-player-id="${p.id}" placeholder="0.00" min="0" step="0.5"></label>
+          <label class="score-extra-label"><span>$ Greeny</span><input type="number" inputmode="decimal" class="wu-greeny-input money-input" data-player-id="${p.id}" placeholder="0.00" min="0" step="0.5"></label>
+        </div>
+      </div>`).join('');
+  }
+}
+
+function _winningsWinner(scores) {
+  // Primary: highest payoutWon
+  let best = 0, winnerId = null, winnerName = '';
+  for (const s of scores) {
+    if ((s.payoutWon || 0) > best) {
+      best = s.payoutWon;
+      winnerId = s.playerId;
+      winnerName = s.playerName || '';
+    }
+  }
+  // Fallback: highest actual score when no payouts entered
+  if (!winnerId) {
+    let bestScore = -1;
+    for (const s of scores) {
+      if (s.actual != null && s.actual > bestScore) {
+        bestScore = s.actual;
+        winnerId = s.playerId;
+        winnerName = s.playerName || '';
+      }
+    }
+  }
+  return { winnerId, winnerName };
+}
+
+async function saveWinningsEntry() {
+  const date = document.getElementById('winningsDate').value;
+  if (!date) { toast('Please select a date'); return; }
+
+  const rounds = await getRounds();
+  const existing = rounds.find(r => r.date === date);
+
+  if (existing) {
+    for (const s of existing.scores) {
+      const scoreEl      = document.querySelector(`#winningsEntryList .wu-score-input[data-player-id="${s.playerId}"]`);
+      const stablefordEl = document.querySelector(`#winningsEntryList .wu-stableford-input[data-player-id="${s.playerId}"]`);
+      const skinsEl      = document.querySelector(`#winningsEntryList .wu-skins-input[data-player-id="${s.playerId}"]`);
+      const greenyEl     = document.querySelector(`#winningsEntryList .wu-greeny-input[data-player-id="${s.playerId}"]`);
+      if (scoreEl && scoreEl.value) s.actual = parseInt(scoreEl.value);
+      s.payoutWon = stablefordEl && stablefordEl.value ? Math.round(parseFloat(stablefordEl.value)*100)/100 : 0;
+      s.skinsWon  = skinsEl && skinsEl.value ? Math.round(parseFloat(skinsEl.value)*100)/100 : 0;
+      s.greenyWon = greenyEl && greenyEl.value ? Math.round(parseFloat(greenyEl.value)*100)/100 : 0;
+    }
+    if (existing.winningsOnly) {
+      const { winnerId, winnerName } = _winningsWinner(existing.scores);
+      existing.winnerId = winnerId;
+      existing.winnerName = winnerName;
+    }
+    await putRound(existing);
+  } else {
+    const scores = [];
+    document.querySelectorAll('#winningsEntryList .wu-score-input').forEach(scoreInput => {
+      const playerId     = scoreInput.dataset.playerId;
+      const playerName   = scoreInput.dataset.playerName || '';
+      const stablefordEl = document.querySelector(`#winningsEntryList .wu-stableford-input[data-player-id="${playerId}"]`);
+      const skinsEl      = document.querySelector(`#winningsEntryList .wu-skins-input[data-player-id="${playerId}"]`);
+      const greenyEl     = document.querySelector(`#winningsEntryList .wu-greeny-input[data-player-id="${playerId}"]`);
+      const actual     = scoreInput.value ? parseInt(scoreInput.value) : null;
+      const payoutWon  = stablefordEl && stablefordEl.value ? Math.round(parseFloat(stablefordEl.value)*100)/100 : 0;
+      const skinsWon   = skinsEl && skinsEl.value ? Math.round(parseFloat(skinsEl.value)*100)/100 : 0;
+      const greenyWon  = greenyEl && greenyEl.value ? Math.round(parseFloat(greenyEl.value)*100)/100 : 0;
+      if (actual !== null || payoutWon > 0 || skinsWon > 0 || greenyWon > 0) {
+        const entry = { playerId, playerName, payoutWon, skinsWon, greenyWon };
+        if (actual !== null) entry.actual = actual;
+        scores.push(entry);
+      }
+    });
+    if (scores.length === 0) { toast('Enter at least one score or winning amount'); return; }
+    const { winnerId: wId, winnerName: wName } = _winningsWinner(scores);
+    await putRound({ id: genId(), date, scores, winningsOnly: true, winnerId: wId, winnerName: wName });
+  }
+
+  await fullRecalculate();
+  toast('Winnings saved!');
+  autoBackup();
+  showScreen('screenDashboard');
 }
 
 // ========================================
