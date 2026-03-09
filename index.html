@@ -1278,17 +1278,24 @@ function fsSettingsDoc() { return firestoreDB.collection('groups').doc(GROUP).co
 function fsClean(obj) { return JSON.parse(JSON.stringify(obj)); }
 
 // Re-render whichever screen is currently visible (skip Enter Round to avoid disrupting input)
+// Debounced: coalesces rapid snapshot callbacks (e.g. players + rounds arriving close together)
+// so the render only runs once with fully-updated caches.
+let _renderDebounceTimer = null;
 function _renderCurrentScreen() {
   if (_suppressRender) return;
-  const active = document.querySelector('.screen.active');
-  if (!active) return;
-  const id = active.id;
-  if (id === 'screenDashboard') renderDashboard();
-  else if (id === 'screenHistory') renderHistory();
-  else if (id === 'screenPlayers') renderPlayerList();
-  else if (id === 'screenSettings') renderSettings();
-  else if (id === 'screenPlayerHistory') renderPlayerHistory();
-  // screenEnterRound and screenUpdateWinnings intentionally skipped
+  clearTimeout(_renderDebounceTimer);
+  _renderDebounceTimer = setTimeout(() => {
+    if (_suppressRender) return;
+    const active = document.querySelector('.screen.active');
+    if (!active) return;
+    const id = active.id;
+    if (id === 'screenDashboard') renderDashboard();
+    else if (id === 'screenHistory') renderHistory();
+    else if (id === 'screenPlayers') renderPlayerList();
+    else if (id === 'screenSettings') renderSettings();
+    else if (id === 'screenPlayerHistory') renderPlayerHistory();
+    // screenEnterRound and screenUpdateWinnings intentionally skipped
+  }, 50);
 }
 
 // ========================================
@@ -1703,7 +1710,13 @@ async function fullRecalculate() {
       }
       _fsPlayers = [...players];
       _fsRounds  = [...rounds];
-    } finally { _suppressRender = false; }
+    } finally {
+      _suppressRender = false;
+      // Explicitly re-render on this device now that the cache is up to date.
+      // The local-echo snapshots will also fire, but _renderCurrentScreen guards against
+      // disrupting Enter Round / Update Winnings screens.
+      _renderCurrentScreen();
+    }
   } else {
     for (const p of players) await putPlayer(p);
   }
@@ -2223,8 +2236,8 @@ async function saveRound() {
       await putRound(round);
       await fullRecalculate();
     } else {
-      await putRound(round);
-      // Update player handicaps, wins and winnings directly
+      // Update player objects in memory first
+      const updatedPlayers = [];
       for (const s of scores) {
         const p = players.find(p => p.id === s.playerId);
         if (p) {
@@ -2233,8 +2246,31 @@ async function saveRound() {
           p.skinsWinnings = (p.skinsWinnings || 0) + (s.skinsWon || 0);
           p.greenyWinnings = (p.greenyWinnings || 0) + (s.greenyWon || 0);
           p.payoutWinnings = (p.payoutWinnings || 0) + (s.payoutWon || 0);
-          await putPlayer(p);
+          updatedPlayers.push(p);
         }
+      }
+      if (firestoreDB) {
+        // Batch all writes (round + players) atomically to avoid partial-update renders on all devices
+        _suppressRender = true;
+        try {
+          const ops = [
+            { col: fsRoundsCol(), id: round.id, data: (({ id, ...d }) => d)(round) },
+            ...updatedPlayers.map(p => ({ col: fsPlayersCol(), id: p.id, data: (({ id, ...d }) => d)(p) }))
+          ];
+          for (let i = 0; i < ops.length; i += 500) {
+            const batch = firestoreDB.batch();
+            ops.slice(i, i + 500).forEach(op => batch.set(op.col.doc(op.id), fsClean(op.data)));
+            await batch.commit();
+          }
+          // Update local cache so renders use fresh data immediately after _suppressRender = false
+          _fsRounds = _fsRounds ? [..._fsRounds.filter(r => r.id !== round.id), round] : [round];
+          _fsPlayers = _fsPlayers ? _fsPlayers.map(p => { const u = updatedPlayers.find(u => u.id === p.id); return u || p; }) : updatedPlayers;
+        } finally {
+          _suppressRender = false;
+        }
+      } else {
+        await putRound(round);
+        for (const p of updatedPlayers) await putPlayer(p);
       }
     }
 
