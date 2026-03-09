@@ -1834,6 +1834,7 @@ const SORT_COLUMNS = [
   { key: 'name', label: 'Player' },
   { key: 'hdcp', label: 'Hdcp' },
   { key: 'wins', label: 'Wins' },
+  { key: 'belt', label: '<img src="images/champion.png" alt="Belt" style="height:18px;vertical-align:middle">' },
   { key: 'last', label: 'Last' },
   { key: 'change', label: '+/-' }
 ];
@@ -1885,6 +1886,7 @@ function renderLeaderboard() {
     }
     if (_sortCol === 'rank' || _sortCol === 'hdcp') { av = a.hdcp; bv = b.hdcp; }
     else if (_sortCol === 'wins') { av = a.wins; bv = b.wins; }
+    else if (_sortCol === 'belt') { av = a.belt; bv = b.belt; }
     else if (_sortCol === 'last') { av = a.last ?? -999; bv = b.last ?? -999; }
     else if (_sortCol === 'change') { av = a.change; bv = b.change; }
     else { av = 0; bv = 0; }
@@ -1901,6 +1903,7 @@ function renderLeaderboard() {
       <td class="player-name">${esc(p.name)}</td>
       <td class="hdcp">${p.hdcp}</td>
       <td>${p.wins > 0 ? '&#127942; ' + p.wins : '—'}</td>
+      <td>${p.belt > 0 ? '<img src="images/champion.png" alt="Belt" style="height:16px;vertical-align:middle"> ' + p.belt : '—'}</td>
       <td>${p.last !== null ? p.last : '—'}</td>
       <td class="${p.change < 0 ? 'change-down' : p.change > 0 ? 'change-up' : 'change-same'}">${p.change < 0 ? '&#9660;' + Math.abs(p.change) : p.change > 0 ? '&#9650;' + p.change : '—'}</td>
       <td style="text-align:center;padding:4px 2px"><button class="row-toggle" onclick="toggleLeaderboardRow('${p.id}')" title="${hidden ? 'Show' : 'Hide'}">${hidden ? '&#43;' : '&#10005;'}</button></td>
@@ -1947,10 +1950,13 @@ async function renderDashboard() {
 
   // Count wins from all rounds on the fly (includes winningsOnly rounds)
   const winCountById = {};
+  const beltCountById = {};
   for (const r of rounds) {
     let wId = r.winnerId;
     if (r.winningsOnly) wId = _winningsWinner(r.scores).winnerId;
     if (wId) winCountById[wId] = (winCountById[wId] || 0) + 1;
+    // Belt wins = Monday round wins only
+    if (wId && isMondayDate(r.date)) beltCountById[wId] = (beltCountById[wId] || 0) + 1;
   }
 
   // Find player with most wins for highlighting
@@ -1959,6 +1965,7 @@ async function renderDashboard() {
   // Leaderboard — build row data then sort/render
   _leaderboardData = activePlayers.map(p => ({
     id: p.id, name: p.name, hdcp: p.currentHdcp, wins: winCountById[p.id] || 0,
+    belt: beltCountById[p.id] || 0,
     last: getLastRoundScore(p.id, rounds),
     change: getLastChange(p.id, rounds),
     isTopWinner: maxWins > 0 && (winCountById[p.id] || 0) === maxWins
