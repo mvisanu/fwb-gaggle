@@ -1157,6 +1157,11 @@ h1, h2, h3, .heading {
   </div>
 
   <div class="faq-item">
+    <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What is the belt column in the leaderboard?<span class="faq-arrow">&#9660;</span></div>
+    <div class="faq-a">The belt icon column shows how many Monday championship rounds each player has won. It counts automatically from Monday-dated rounds. To credit a player for a historical win not yet in the app, go to <strong>Players → ✎ Edit → Belt Wins</strong> and set the count manually.</div>
+  </div>
+
+  <div class="faq-item">
     <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What if I entered the wrong score?<span class="faq-arrow">&#9660;</span></div>
     <div class="faq-a">Go to History, expand the round card and tap Delete Round. Then re-enter the round with the correct scores. Deleting fully recalculates all handicaps, wins, and winnings from scratch.</div>
   </div>
@@ -1181,7 +1186,7 @@ h1, h2, h3, .heading {
 
   <div class="faq-item">
     <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Can I use the app on multiple phones?<span class="faq-arrow">&#9660;</span></div>
-    <div class="faq-a">Yes — all data syncs in real time via Firebase. Open the same group URL on any phone or device and you'll see the same leaderboard, rounds, and handicaps. Save a round on one phone and everyone else's screen updates automatically.</div>
+    <div class="faq-a">Yes — all data syncs in real time via Firebase Firestore. Open the same group URL on any phone or device and you'll see the same leaderboard, rounds, and handicaps. Save a round on one phone and everyone else's screen updates within seconds automatically.</div>
   </div>
 
   <div class="faq-item">

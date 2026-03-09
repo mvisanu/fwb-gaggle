@@ -58,7 +58,7 @@ The home screen scrolls through all sections:
 | Section | What it shows |
 |---|---|
 | **Stats Banner** | Total rounds played · Date of last round · Player with most wins |
-| **Leaderboard** | All active players sorted by handicap (lowest = best). Tap any column header to re-sort. Wins column shows 🏆 count (includes winningsOnly rounds). Gold row = player with most wins |
+| **Leaderboard** | All active players sorted by handicap (lowest = best). Tap any column header to re-sort. **Wins** 🏆 counts all round wins (including winningsOnly rounds). **Belt** 🥋 counts Monday round wins (championship belt holders). Gold row = player with most wins |
 | **Wins** | Gold horizontal bar chart — one bar per player, length = total wins |
 | **Winnings** | Colour-coded pie chart showing each player's share of total skins + greeny dollars |
 | **Win Leaderboard** | Ranked by wins with win percentage |
@@ -135,7 +135,7 @@ Tap **💵 Update Winnings** (PIN protected) to record a non-Monday result witho
 
 Tap **Players** to:
 - **Add** a new player with a starting handicap
-- **Edit** a player's name or manually adjust their current handicap
+- **Edit** a player's name, manually adjust their current handicap, or set their **Belt Wins** count (used in the leaderboard belt column — useful for crediting historical Monday wins not yet recorded as rounds)
 - **Toggle active/inactive** — inactive players are hidden from score entry but their history is kept
 - **Delete** a player — their past scores remain in round history as archived data
 
@@ -187,7 +187,7 @@ Tap the **❓ Help & FAQ** button at the bottom of the dashboard to open the in-
 
 - **Single file** — everything is in `index.html` (HTML, CSS, JS). No server, no build tools.
 - **Storage** — Firebase Firestore (primary, real-time sync across all devices) with IndexedDB local fallback. Set `FIREBASE_CONFIG = null` in the script to revert to fully local IndexedDB mode.
-- **Real-time sync** — all players, rounds, belt holder, PIN, and settings are stored in Firestore under `groups/{GROUP}/`. Changes on one device appear instantly on all others via `onSnapshot` listeners.
+- **Real-time sync** — all players, rounds, belt holder, PIN, and settings are stored in Firestore under `groups/{GROUP}/`. Changes on one device appear instantly on all others via `onSnapshot` listeners. Round saves batch all player + round writes atomically; snapshot events are debounced 50ms so all devices always render a consistent state.
 - **Offline** — Firestore offline persistence is enabled (`enablePersistence({ synchronizeTabs: true })`). Rounds saved offline are queued and synced automatically when connectivity returns.
 - **Multi-group** — `?group=<key>` in URL isolates all data per group. Key is a 16-char random hex string — the URL itself controls view access. Create groups via admin view (`?admin=1`). Monday uses original key names for backward compatibility.
 - **Belt champion** — stored in Firestore `meta/settings.beltHolder` (Firestore mode) or `localStorage` key `beltHolder` (local mode). Defaults to `"Josh"`.
@@ -237,6 +237,12 @@ Go to **Players → + Add Player**, enter their name and a starting handicap. Th
 
 **Q: How do I adjust a player's handicap manually?**
 Go to **Players**, tap the ✎ edit icon next to the player, and change their current handicap. Note: this only affects their current handicap — past round history is unchanged.
+
+**Q: What is the Belt column in the leaderboard?**
+The belt icon column counts how many times each player has won the Monday championship belt. It automatically counts Monday-dated round wins. You can also set a player's belt win count manually via **Players → ✎ Edit → Belt Wins** — useful for crediting historical wins before the app was tracking them.
+
+**Q: Why isn't a player's belt win showing in the leaderboard?**
+Belt wins are counted from Monday-dated rounds stored in the app. If a win happened before the round was recorded in the app, go to **Players → ✎ Edit** and set the player's Belt Wins count manually.
 
 **Q: What does the Form Guide show?**
 Each arrow represents one of the player's last 10 rounds. Green ↑ = handicap dropped (played well), Red ↓ = handicap went up, Grey − = no change. Players who didn't play a given round are simply skipped.

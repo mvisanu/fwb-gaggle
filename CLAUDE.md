@@ -120,7 +120,7 @@ The dashboard is a single scrolling page (no tabs). All sections stack verticall
    - Does NOT modify handicaps regardless of day
 6. **Manage Players** — Add/edit/toggle active/delete players. Sub-line shows skins and greeny totals if non-zero. Edit Player modal includes: Name, Starting Handicap, Current Handicap, Belt Wins (manual override for leaderboard belt column)
 7. **Settings** — Handicap reference table, payout calculator (configurable buy-in + 1/2/3 places; default 2 places 60/40%), skins calculator (per-hole rates or fixed pot), greeny calculator (closest-to-pin par 3s), security (4-digit PIN), export/import JSON, Clear Round Data, Load Sample Data, Reset All Data, Migrate local data → Firestore (visible only in Firestore mode before migration)
-8. **Help & FAQ** — Quick Start guide, 10 expandable FAQ items (tap to open/close), handicap rules summary. Accessible via full-width button at bottom of dashboard nav grid.
+8. **Help & FAQ** — Quick Start guide, 11 expandable FAQ items (tap to open/close), handicap rules summary. Accessible via full-width button at bottom of dashboard nav grid.
 
 ## Belt Holder / Monday Champion
 
