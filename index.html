@@ -1965,8 +1965,11 @@ async function renderDashboard() {
   }));
   renderLeaderboard();
 
-  // Win leaderboard
-  const winSorted = [...activePlayers].filter(p => p.wins > 0).sort((a, b) => b.wins - a.wins);
+  // Win leaderboard — use live winCountById, not stale p.wins
+  const winSorted = [...activePlayers]
+    .map(p => ({ ...p, wins: winCountById[p.id] || 0 }))
+    .filter(p => p.wins > 0)
+    .sort((a, b) => b.wins - a.wins);
   const winDiv = document.getElementById('winLeaderboard');
   if (winSorted.length === 0) {
     winDiv.innerHTML = '<div style="text-align:center;color:var(--gray);padding:20px">No wins recorded yet</div>';
@@ -1983,17 +1986,20 @@ async function renderDashboard() {
     }).join('');
   }
 
-  // Charts
-  renderWinsBarChart(activePlayers);
+  // Charts — pass winCountById so bar chart uses live counts too
+  renderWinsBarChart(activePlayers, winCountById);
   renderWinningsPieChart(players);
 
   // Form guide
   renderFormGuide(players, rounds);
 }
 
-function renderWinsBarChart(players) {
+function renderWinsBarChart(players, winCountById) {
   const div = document.getElementById('winsBarChart');
-  const sorted = [...players].filter(p => p.wins > 0).sort((a, b) => b.wins - a.wins);
+  const sorted = [...players]
+    .map(p => ({ ...p, wins: winCountById ? (winCountById[p.id] || 0) : (p.wins || 0) }))
+    .filter(p => p.wins > 0)
+    .sort((a, b) => b.wins - a.wins);
   if (sorted.length === 0) {
     div.innerHTML = '<div class="chart-empty">No wins recorded yet</div>';
     return;
