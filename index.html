@@ -2320,6 +2320,7 @@ async function renderHistory() {
 
     // Winnings-only round
     if (r.winningsOnly) {
+      const hasPayout = r.scores.some(s => s.payoutWon > 0);
       const hasSkins = r.scores.some(s => s.skinsWon > 0);
       const hasGreeny = r.scores.some(s => s.greenyWon > 0);
       const hasScores = r.scores.some(s => s.actual != null);
@@ -2335,7 +2336,6 @@ async function renderHistory() {
             ${hasGreeny ? `<td style="color:var(--green-good-on-light)">${s.greenyWon > 0 ? '$' + s.greenyWon : '—'}</td>` : ''}
           </tr>`;
         }).join('');
-      const hasPayout = r.scores.some(s => s.payoutWon > 0);
       return `<div class="round-card" style="border-left:3px solid var(--gold)">
         <div class="round-header" onclick="toggleRound(this)">
           <div>
