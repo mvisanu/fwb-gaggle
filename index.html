@@ -309,6 +309,17 @@ h1, h2, h3, .heading {
 .win-count { font-size: 1rem; margin-right: 8px; color: var(--primary); }
 .win-pct { color: var(--text-muted); font-size: 0.8rem; width: 48px; text-align: right; }
 
+/* --- Sandbagger Board --- */
+.sand-row { display:flex; align-items:center; padding:10px 6px; border-bottom:1px solid var(--border-light); gap:6px; }
+.sand-row.sand-top { background:rgba(220,38,38,0.07); }
+.sand-rank { color:var(--text-muted); font-weight:700; width:28px; font-size:0.9rem; }
+.sand-name { flex:1; font-weight:700; font-size:0.9rem; color:var(--primary-deep); }
+.sand-avg { font-size:0.95rem; font-weight:700; color:var(--red-bad-on-light); min-width:52px; text-align:right; }
+.sand-beat { color:var(--text-muted); font-size:0.78rem; min-width:44px; text-align:right; }
+.sand-best { color:var(--text-muted); font-size:0.78rem; min-width:44px; text-align:right; }
+.sand-header { display:flex; align-items:center; padding:4px 6px 6px; gap:6px; font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; }
+.sand-header .sand-rank { color:transparent; }
+
 /* --- Nav Grid --- */
 .nav-grid {
   display: grid;
@@ -936,6 +947,9 @@ h1, h2, h3, .heading {
     <div id="tabForm" style="margin-bottom:20px">
       <div id="formGuide"></div>
     </div>
+
+    <h2 class="section-title">&#129344; Top 5 Sandbaggers</h2>
+    <div id="sandbaggerBoard" style="margin-bottom:20px"></div>
 
     <div class="nav-grid">
       <button class="nav-btn" onclick="requirePin(()=>showScreen('screenEnterRound'))"><span class="nav-icon">&#9998;</span>Enter Round</button>
@@ -2004,6 +2018,9 @@ async function renderDashboard() {
 
   // Form guide
   renderFormGuide(players, rounds);
+
+  // Sandbagger board
+  renderSandbaggerBoard(activePlayers, rounds);
 }
 
 function renderWinsBarChart(players, winCountById) {
@@ -2107,6 +2124,50 @@ function renderFormGuide(players, rounds) {
         <span style="font-weight:700;width:32px;text-align:right;color:var(--primary)">${p.currentHdcp}</span>
       </div>`;
     }).join('');
+}
+
+function renderSandbaggerBoard(activePlayers, rounds) {
+  const div = document.getElementById('sandbaggerBoard');
+  const MIN_ROUNDS = 3;
+
+  // Build per-player stats from regular (non-winningsOnly) rounds only
+  const stats = activePlayers.map(p => {
+    const playerRounds = rounds.filter(r => !r.winningsOnly && r.scores.some(s => s.playerId === p.id));
+    if (playerRounds.length < MIN_ROUNDS) return null;
+    const nets = playerRounds.map(r => {
+      const s = r.scores.find(s => s.playerId === p.id);
+      return s ? s.netScore : null;
+    }).filter(n => n !== null);
+    const avgNet = nets.reduce((a, b) => a + b, 0) / nets.length;
+    const beatCount = nets.filter(n => n > 0).length;
+    const beatRate = Math.round((beatCount / nets.length) * 100);
+    const bestNet = Math.max(...nets);
+    return { id: p.id, name: p.name, avgNet: Math.round(avgNet * 10) / 10, beatRate, bestNet, rounds: nets.length };
+  }).filter(Boolean);
+
+  if (stats.length === 0) {
+    div.innerHTML = `<div style="text-align:center;color:var(--gray);padding:20px">Need at least ${MIN_ROUNDS} rounds per player</div>`;
+    return;
+  }
+
+  const top5 = stats.sort((a, b) => b.avgNet - a.avgNet).slice(0, 5);
+
+  div.innerHTML = `
+    <div class="sand-header">
+      <span class="sand-rank">#</span>
+      <span class="sand-name">Player</span>
+      <span class="sand-avg">Avg Net</span>
+      <span class="sand-beat">Beat%</span>
+      <span class="sand-best">Best</span>
+    </div>` +
+    top5.map((p, i) => `
+    <div class="sand-row${i === 0 ? ' sand-top' : ''}">
+      <span class="sand-rank">${i + 1}</span>
+      <span class="sand-name">${esc(p.name)}</span>
+      <span class="sand-avg">${p.avgNet >= 0 ? '+' : ''}${p.avgNet}</span>
+      <span class="sand-beat">${p.beatRate}%</span>
+      <span class="sand-best">${p.bestNet >= 0 ? '+' : ''}${p.bestNet}</span>
+    </div>`).join('');
 }
 
 // ========================================
