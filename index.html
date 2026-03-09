@@ -1965,7 +1965,7 @@ async function renderDashboard() {
   // Leaderboard — build row data then sort/render
   _leaderboardData = activePlayers.map(p => ({
     id: p.id, name: p.name, hdcp: p.currentHdcp, wins: winCountById[p.id] || 0,
-    belt: beltCountById[p.id] || 0,
+    belt: Math.max(p.beltWins || 0, beltCountById[p.id] || 0),
     last: getLastRoundScore(p.id, rounds),
     change: getLastChange(p.id, rounds),
     isTopWinner: maxWins > 0 && (winCountById[p.id] || 0) === maxWins
@@ -2493,6 +2493,8 @@ async function openEditPlayerModal(playerId) {
     <input type="number" inputmode="numeric" id="modalPlayerStartHdcp" value="${p.startingHdcp}" min="0" max="54">
     <label>Current Handicap</label>
     <input type="number" inputmode="numeric" id="modalPlayerHdcp" value="${p.currentHdcp}" min="0" max="54">
+    <label><img src="images/champion.png" alt="Belt" style="height:16px;vertical-align:middle"> Belt Wins</label>
+    <input type="number" inputmode="numeric" id="modalPlayerBeltWins" value="${p.beltWins || 0}" min="0" max="99">
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" onclick="doEditPlayer('${playerId}')">Save</button>
@@ -2504,6 +2506,7 @@ async function doEditPlayer(playerId) {
   const name = document.getElementById('modalPlayerName').value.trim();
   const startHdcp = parseInt(document.getElementById('modalPlayerStartHdcp').value);
   const hdcp = parseInt(document.getElementById('modalPlayerHdcp').value);
+  const beltWins = parseInt(document.getElementById('modalPlayerBeltWins').value) || 0;
   if (!name) { toast('Enter a name'); return; }
   if (isNaN(startHdcp) || startHdcp < 0) { toast('Enter a valid starting handicap'); return; }
   if (isNaN(hdcp) || hdcp < 0) { toast('Enter a valid handicap'); return; }
@@ -2514,6 +2517,7 @@ async function doEditPlayer(playerId) {
   p.name = name;
   p.startingHdcp = startHdcp;
   p.currentHdcp = hdcp;
+  p.beltWins = beltWins;
   await putPlayer(p);
   closeModal();
   toast('Player updated');
