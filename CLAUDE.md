@@ -106,7 +106,7 @@ The header is sticky and split into two tiers:
 
 The dashboard is a single scrolling page (no tabs). All sections stack vertically.
 
-1. **Dashboard** — Stats banner (Rounds / Last Round / Top Winner) → Leaderboard (columns: #, Player, Hdcp, Wins 🏆, Belt 🥊, Last, +/-) → Wins bar chart → Winnings pie chart → Win Leaderboard → Form Guide → Nav buttons
+1. **Dashboard** — Stats banner (Rounds / Last Round / Top Winner) → Leaderboard (columns: #, Player, Hdcp, Wins 🏆, Belt 🥊, Last, +/-) → Wins bar chart → Winnings pie chart → Win Leaderboard → Form Guide → Top 5 Sandbaggers → Nav buttons
 2. **Enter Round** — White content panel. Date picker, score inputs (live handicap preview), Skins $ and Greeny $ per player, auto-determines winner on save. Only players with a score entered are updated — absent players keep their current handicap.
 3. **Round History** — Expandable round cards (newest first), delete with full recalculation. Skins/Greeny columns appear automatically if round has winnings data. winningsOnly cards show winner row gold, rows sorted by payoutWon desc.
 4. **Player History** — (`screenPlayerHistory`, `renderPlayerHistory()`, `_renderPlayerHistoryContent()`). State: `_playerHistoryId` (null = list view, non-null = detail for that player).
@@ -291,3 +291,4 @@ Global (not namespaced) PIN stored in `localStorage` key `adminPin`. Bypasses Ed
 31. Leaderboard Wins column counts wins from all round types including winningsOnly (computed live from rounds in renderDashboard)
 32. Leaderboard Belt column shows champion.png icon + count; value = max(p.beltWins manual field, computed Monday-round wins); editable via Manage Players → Edit Player → Belt Wins field
 33. Firestore sync: round + all player writes batched atomically; onSnapshot events debounced 50ms so phone/computer always render consistent state after a save
+34. Sandbagger board: `renderSandbaggerBoard(activePlayers, rounds)` — ranks top 5 by avgNet (mean of netScore across regular rounds, min 3 rounds). Columns: Avg Net, Beat% (rounds where netScore > 0), Best single net. #1 spot red-tinted. winningsOnly rounds excluded.

@@ -63,6 +63,7 @@ The home screen scrolls through all sections:
 | **Winnings** | Colour-coded pie chart showing each player's share of total skins + greeny dollars |
 | **Win Leaderboard** | Ranked by wins with win percentage |
 | **Form Guide** | Last 10 rounds as arrows — green ↑ = handicap dropped (played well), red ↓ = went up, grey − = no change |
+| **Top 5 Sandbaggers** | Ranks players by average net score (actual − handicap). Honest players average ~0; sandbaggers are consistently positive. Shows Avg Net, Beat% (rounds above handicap), and Best single round. Min 3 rounds required. #1 spot highlighted in red. |
 
 ---
 
@@ -243,6 +244,9 @@ The belt icon column counts how many times each player has won the Monday champi
 
 **Q: Why isn't a player's belt win showing in the leaderboard?**
 Belt wins are counted from Monday-dated rounds stored in the app. If a win happened before the round was recorded in the app, go to **Players → ✎ Edit** and set the player's Belt Wins count manually.
+
+**Q: How does the Sandbagger leaderboard work?**
+It ranks the top 5 players by **average net score** (actual Stableford points minus handicap before the round) across all regular rounds. A correctly-handicapped player should average around 0 — consistently positive averages indicate sandbagging. The leaderboard also shows Beat% (how often they beat their handicap; ~20% is normal, >50% is suspicious) and their single best net round. Requires at least 3 rounds to appear.
 
 **Q: What does the Form Guide show?**
 Each arrow represents one of the player's last 10 rounds. Green ↑ = handicap dropped (played well), Red ↓ = handicap went up, Grey − = no change. Players who didn't play a given round are simply skipped.
