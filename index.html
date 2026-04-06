@@ -3716,57 +3716,71 @@ function _winningsWinner(scores) {
   return { winnerId, winnerName };
 }
 
+let _savingWinnings = false;
 async function saveWinningsEntry() {
+  if (_savingWinnings) return;
   const date = document.getElementById('winningsDate').value;
   if (!date) { toast('Please select a date'); return; }
 
-  const rounds = await getRounds();
-  const existing = rounds.find(r => r.date === date);
+  const btn = document.querySelector('#screenUpdateWinnings .btn-primary');
+  _savingWinnings = true;
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
 
-  if (existing) {
-    for (const s of existing.scores) {
-      const scoreEl      = document.querySelector(`#winningsEntryList .wu-score-input[data-player-id="${s.playerId}"]`);
-      const stablefordEl = document.querySelector(`#winningsEntryList .wu-stableford-input[data-player-id="${s.playerId}"]`);
-      const skinsEl      = document.querySelector(`#winningsEntryList .wu-skins-input[data-player-id="${s.playerId}"]`);
-      const greenyEl     = document.querySelector(`#winningsEntryList .wu-greeny-input[data-player-id="${s.playerId}"]`);
-      if (scoreEl && scoreEl.value) s.actual = parseInt(scoreEl.value);
-      s.payoutWon = stablefordEl && stablefordEl.value ? Math.round(parseFloat(stablefordEl.value)*100)/100 : 0;
-      s.skinsWon  = skinsEl && skinsEl.value ? Math.round(parseFloat(skinsEl.value)*100)/100 : 0;
-      s.greenyWon = greenyEl && greenyEl.value ? Math.round(parseFloat(greenyEl.value)*100)/100 : 0;
-    }
-    if (existing.winningsOnly) {
-      const { winnerId, winnerName } = _winningsWinner(existing.scores);
-      existing.winnerId = winnerId;
-      existing.winnerName = winnerName;
-    }
-    await putRound(existing);
-  } else {
-    const scores = [];
-    document.querySelectorAll('#winningsEntryList .wu-score-input').forEach(scoreInput => {
-      const playerId     = scoreInput.dataset.playerId;
-      const playerName   = scoreInput.dataset.playerName || '';
-      const stablefordEl = document.querySelector(`#winningsEntryList .wu-stableford-input[data-player-id="${playerId}"]`);
-      const skinsEl      = document.querySelector(`#winningsEntryList .wu-skins-input[data-player-id="${playerId}"]`);
-      const greenyEl     = document.querySelector(`#winningsEntryList .wu-greeny-input[data-player-id="${playerId}"]`);
-      const actual     = scoreInput.value ? parseInt(scoreInput.value) : null;
-      const payoutWon  = stablefordEl && stablefordEl.value ? Math.round(parseFloat(stablefordEl.value)*100)/100 : 0;
-      const skinsWon   = skinsEl && skinsEl.value ? Math.round(parseFloat(skinsEl.value)*100)/100 : 0;
-      const greenyWon  = greenyEl && greenyEl.value ? Math.round(parseFloat(greenyEl.value)*100)/100 : 0;
-      if (actual !== null || payoutWon > 0 || skinsWon > 0 || greenyWon > 0) {
-        const entry = { playerId, playerName, payoutWon, skinsWon, greenyWon };
-        if (actual !== null) entry.actual = actual;
-        scores.push(entry);
+  try {
+    const rounds = await getRounds();
+    const existing = rounds.find(r => r.date === date);
+
+    if (existing) {
+      for (const s of existing.scores) {
+        const scoreEl      = document.querySelector(`#winningsEntryList .wu-score-input[data-player-id="${s.playerId}"]`);
+        const stablefordEl = document.querySelector(`#winningsEntryList .wu-stableford-input[data-player-id="${s.playerId}"]`);
+        const skinsEl      = document.querySelector(`#winningsEntryList .wu-skins-input[data-player-id="${s.playerId}"]`);
+        const greenyEl     = document.querySelector(`#winningsEntryList .wu-greeny-input[data-player-id="${s.playerId}"]`);
+        if (scoreEl && scoreEl.value) s.actual = parseInt(scoreEl.value);
+        s.payoutWon = stablefordEl && stablefordEl.value ? Math.round(parseFloat(stablefordEl.value)*100)/100 : 0;
+        s.skinsWon  = skinsEl && skinsEl.value ? Math.round(parseFloat(skinsEl.value)*100)/100 : 0;
+        s.greenyWon = greenyEl && greenyEl.value ? Math.round(parseFloat(greenyEl.value)*100)/100 : 0;
       }
-    });
-    if (scores.length === 0) { toast('Enter at least one score or winning amount'); return; }
-    const { winnerId: wId, winnerName: wName } = _winningsWinner(scores);
-    await putRound({ id: genId(), date, scores, winningsOnly: true, winnerId: wId, winnerName: wName });
-  }
+      if (existing.winningsOnly) {
+        const { winnerId, winnerName } = _winningsWinner(existing.scores);
+        existing.winnerId = winnerId;
+        existing.winnerName = winnerName;
+      }
+      await putRound(existing);
+    } else {
+      const scores = [];
+      document.querySelectorAll('#winningsEntryList .wu-score-input').forEach(scoreInput => {
+        const playerId     = scoreInput.dataset.playerId;
+        const playerName   = scoreInput.dataset.playerName || '';
+        const stablefordEl = document.querySelector(`#winningsEntryList .wu-stableford-input[data-player-id="${playerId}"]`);
+        const skinsEl      = document.querySelector(`#winningsEntryList .wu-skins-input[data-player-id="${playerId}"]`);
+        const greenyEl     = document.querySelector(`#winningsEntryList .wu-greeny-input[data-player-id="${playerId}"]`);
+        const actual     = scoreInput.value ? parseInt(scoreInput.value) : null;
+        const payoutWon  = stablefordEl && stablefordEl.value ? Math.round(parseFloat(stablefordEl.value)*100)/100 : 0;
+        const skinsWon   = skinsEl && skinsEl.value ? Math.round(parseFloat(skinsEl.value)*100)/100 : 0;
+        const greenyWon  = greenyEl && greenyEl.value ? Math.round(parseFloat(greenyEl.value)*100)/100 : 0;
+        if (actual !== null || payoutWon > 0 || skinsWon > 0 || greenyWon > 0) {
+          const entry = { playerId, playerName, payoutWon, skinsWon, greenyWon };
+          if (actual !== null) entry.actual = actual;
+          scores.push(entry);
+        }
+      });
+      if (scores.length === 0) { toast('Enter at least one score or winning amount'); return; }
+      const { winnerId: wId, winnerName: wName } = _winningsWinner(scores);
+      await putRound({ id: genId(), date, scores, winningsOnly: true, winnerId: wId, winnerName: wName });
+    }
 
-  await fullRecalculate();
-  toast('Winnings saved!');
-  autoBackup();
-  showScreen('screenDashboard');
+    await fullRecalculate();
+    toast('Winnings saved!');
+    autoBackup();
+    showScreen('screenDashboard');
+  } catch (err) {
+    console.error('saveWinningsEntry error:', err);
+    toast('Save failed: ' + (err && err.message ? err.message : String(err)));
+  } finally {
+    _savingWinnings = false;
+    if (btn) { btn.disabled = false; btn.textContent = 'Save Winnings'; }
+  }
 }
 
 // ========================================
