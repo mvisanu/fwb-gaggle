@@ -1575,6 +1575,10 @@ async function putRound(r) {
 async function deleteRound(id) {
   if (firestoreDB) {
     await fsRoundsCol().doc(id).delete();
+    // Keep local cache in sync so subsequent getRounds() calls don't see the deleted round
+    if (_fsRounds !== null) {
+      _fsRounds = _fsRounds.filter(r => r.id !== id);
+    }
     return;
   }
   if (useLocalStorage) {
