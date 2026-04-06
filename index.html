@@ -1536,6 +1536,11 @@ async function putPlayer(p) {
   if (firestoreDB) {
     const { id, ...data } = p;
     await fsPlayersCol().doc(id).set(fsClean(data));
+    // Keep local cache in sync so subsequent getPlayers() calls see the new/updated player
+    if (_fsPlayers !== null) {
+      const idx = _fsPlayers.findIndex(x => x.id === p.id);
+      if (idx >= 0) _fsPlayers[idx] = p; else _fsPlayers.push(p);
+    }
     return;
   }
   if (useLocalStorage) {
@@ -1551,6 +1556,11 @@ async function putRound(r) {
   if (firestoreDB) {
     const { id, ...data } = r;
     await fsRoundsCol().doc(id).set(fsClean(data));
+    // Keep local cache in sync so subsequent getRounds() calls see the new/updated round
+    if (_fsRounds !== null) {
+      const idx = _fsRounds.findIndex(x => x.id === r.id);
+      if (idx >= 0) _fsRounds[idx] = r; else _fsRounds.push(r);
+    }
     return;
   }
   if (useLocalStorage) {
