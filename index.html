@@ -2360,6 +2360,7 @@ async function saveRound() {
           _fsPlayers = _fsPlayers ? _fsPlayers.map(p => { const u = updatedPlayers.find(u => u.id === p.id); return u || p; }) : updatedPlayers;
         } finally {
           _suppressRender = false;
+          _renderCurrentScreen();
         }
       } else {
         await putRound(round);
@@ -2375,6 +2376,9 @@ async function saveRound() {
     toast(label + ' Winner: ' + (winnerPlayer ? winnerPlayer.name : '?') + ' &#127942;');
     showScreen('screenDashboard');
     autoBackup();
+  } catch (err) {
+    console.error('saveRound error:', err);
+    toast('Save failed: ' + (err && err.message ? err.message : String(err)));
   } finally {
     savingRound = false;
     document.getElementById('saveRoundBtn').disabled = false;
