@@ -1608,10 +1608,12 @@ async function deletePlayer(id) {
 async function clearAll() {
   if (firestoreDB) {
     const [pSnap, rSnap] = await Promise.all([fsPlayersCol().get(), fsRoundsCol().get()]);
-    const batch = firestoreDB.batch();
-    pSnap.docs.forEach(d => batch.delete(d.ref));
-    rSnap.docs.forEach(d => batch.delete(d.ref));
-    await batch.commit();
+    const allRefs = [...pSnap.docs.map(d => d.ref), ...rSnap.docs.map(d => d.ref)];
+    for (let i = 0; i < allRefs.length; i += 500) {
+      const batch = firestoreDB.batch();
+      allRefs.slice(i, i + 500).forEach(ref => batch.delete(ref));
+      await batch.commit();
+    }
     _fsPlayers = [];
     _fsRounds = [];
     return;
@@ -3142,14 +3144,21 @@ async function doImport() {
   const data = window._pendingImport;
   if (!data) return;
   closeModal();
-  await clearAll();
-  for (const p of data.players) await putPlayer(p);
-  for (const r of data.rounds) await putRound(r);
-  // Recalculate to ensure consistency
-  await fullRecalculate();
-  toast('Data imported successfully');
-  showScreen('screenDashboard');
-  window._pendingImport = null;
+  const btn = document.querySelector('#screenSettings .btn-secondary');
+  toast('Importing…');
+  try {
+    await clearAll();
+    for (const p of data.players) await putPlayer(p);
+    for (const r of data.rounds) await putRound(r);
+    await fullRecalculate();
+    toast('Data imported successfully!');
+    showScreen('screenDashboard');
+  } catch (err) {
+    console.error('doImport error:', err);
+    toast('Import failed: ' + (err && err.message ? err.message : String(err)));
+  } finally {
+    window._pendingImport = null;
+  }
 }
 
 function confirmClearRounds() {
